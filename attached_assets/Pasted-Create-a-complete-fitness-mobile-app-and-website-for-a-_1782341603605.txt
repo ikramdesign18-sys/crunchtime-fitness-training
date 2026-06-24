@@ -1,0 +1,542 @@
+Create a complete fitness mobile app and website for a fitness business.
+
+App name: Crunchtime Fitness Training
+
+Build the mobile app using React Native Expo with TypeScript. Create a clean, modern, beautiful, premium, user-friendly fitness app with perfect spacing, clean layout, smooth navigation, and professional light/dark theme support.
+
+Use the uploaded logo/brand screenshot as inspiration. The logo color should be used as the primary brand color. Do not copy any ugly default UI. Make the app look polished, modern, and client-ready.
+
+Create both sides inside one mobile app using role-based authentication:
+
+1. User/Consumer side
+2. Trainer/Admin side
+
+Use one login page. After login, check user role:
+
+* If role is user, open user dashboard
+* If role is trainer/admin, open trainer dashboard
+
+Normal signup users should automatically get role = user.
+Trainer/admin account should be created manually in the database.
+
+Use Supabase for authentication, database, and file storage. If Supabase keys are not added yet, create placeholder config and clear setup instructions in the code comments.
+
+Mobile app screens required:
+
+USER SIDE SCREENS
+
+1. Splash Screen
+
+* Show logo
+* App name: Crunchtime Fitness Training
+* Clean fitness-style loading screen
+
+2. Onboarding Screens
+   Create 3–4 modern onboarding screens:
+
+* Train with guided workout programs
+* Track BMI and fitness progress
+* Follow meal plans
+* Connect with your trainer through chat, booking, and video submission
+
+3. Login Screen
+
+* Email
+* Password
+* Login button
+* Signup link
+* Forgot password link
+* Modern fitness UI
+
+4. Signup Screen
+
+* Full name
+* Email
+* Password
+* Confirm password
+* Signup button
+* Default role should be user
+
+5. Forgot Password Screen
+
+* Email input
+* Send reset link button
+
+6. User Profile Setup Screen
+   Collect:
+
+* Name
+* Age
+* Gender
+* Height
+* Weight
+* Fitness goal
+* Activity level
+* Preferred training type
+
+Fitness goals:
+
+* Lose weight
+* Gain muscle
+* Improve strength
+* Improve conditioning
+* General fitness
+* Athlete training
+
+Activity levels:
+
+* Beginner
+* Intermediate
+* Advanced
+* Athlete
+
+7. User Home Dashboard
+   Show:
+
+* Welcome message
+* Today’s workout card
+* BMI status card
+* Meal plan card
+* Progress summary
+* Video submission shortcut
+* Chat with trainer shortcut
+* Book session shortcut
+* Clean cards and modern dashboard layout
+
+8. Workout Programs Screen
+   Show workout categories:
+
+* Strength Training
+* Conditioning
+* Weight Loss
+* Muscle Gain
+* Full Body
+* Cardio
+* Athlete Training
+* Beginner Workouts
+* Home Workouts
+* Gym Workouts
+
+9. Workout Detail Screen
+   Show:
+
+* Workout title
+* Goal
+* Duration
+* Difficulty
+* Calories estimate
+* Exercise list
+* Sets and reps
+* Rest time
+* Start workout button
+
+10. Exercise Detail Screen
+    Show:
+
+* Exercise name
+* Exercise image/video placeholder
+* Instructions
+* Sets
+* Reps
+* Duration
+* Rest
+* Tips
+* Common mistakes section
+
+11. Active Workout Screen
+    Show:
+
+* Current exercise
+* Timer
+* Sets/reps
+* Previous/next exercise
+* Pause/resume
+* Finish workout
+* Clean workout progress indicator
+
+12. Workout Completed Screen
+    Show:
+
+* Workout completed message
+* Time completed
+* Exercises completed
+* Calories estimate
+* Save progress button
+
+13. BMI Calculator Screen
+    User enters:
+
+* Height
+* Weight
+
+Show:
+
+* BMI result
+* BMI category
+* Short fitness suggestion
+* Save result button
+
+BMI categories:
+
+* Underweight
+* Normal
+* Overweight
+* Obese
+
+14. Meal Plans Screen
+    Show meal plan categories:
+
+* Weight loss meal plan
+* Muscle gain meal plan
+* Athlete performance meal plan
+* Balanced lifestyle meal plan
+
+Each plan should show:
+
+* Breakfast
+* Lunch
+* Dinner
+* Snacks
+* Calories
+* Protein/carbs/fats if possible
+
+15. Meal Detail Screen
+    Show:
+
+* Meal name
+* Meal image placeholder
+* Calories
+* Ingredients
+* Nutrition info
+* Preparation instructions
+
+16. Progress Tracking Screen
+    Show:
+
+* Current weight
+* BMI history
+* Completed workouts
+* Calories burned
+* Weekly progress
+* Simple chart/cards
+* Progress photo placeholder if needed
+
+17. 1-on-1 Chat Screen
+    Create user-to-trainer messaging UI:
+
+* Message list
+* Text input
+* Send button
+* Attachment/video icon
+* Clean chat bubbles
+* Dummy messages first
+* Structure code so real Supabase chat can be connected
+
+18. Session Booking Screen
+    User can request a coaching session:
+
+* Select session type
+* Select date
+* Select time
+* Add note
+* Submit booking request
+
+Session types:
+
+* Fitness consultation
+* Workout review
+* Meal plan review
+* Personal training session
+* Video call session
+
+19. Video Submission Screen
+    User can submit exercise video for review:
+
+* Select exercise
+* Upload/select video from phone
+* Add note
+* Submit video
+* Show status: Submitted, Reviewed, Feedback Received
+
+Use Expo ImagePicker or compatible media picker for video selection. Store submitted video data structure for Supabase storage.
+
+20. Video Submission Detail Screen
+    Show:
+
+* Submitted video
+* Exercise name
+* User note
+* Status
+* Trainer feedback if available
+
+21. Basic Live Video Call Screen
+    Create a clean video call UI:
+
+* Trainer/user video placeholder
+* Start call button
+* End call button
+* Mute button
+* Camera button
+* Call status
+
+Important:
+Implement this as a basic video call setup/placeholder unless video call API keys are provided. Keep the structure ready for Agora, Stream, or similar video SDK. Do not hardcode paid API keys.
+
+22. Notifications Screen
+    Show:
+
+* Workout reminder
+* Meal reminder
+* Booking update
+* Trainer message
+* Video feedback update
+
+23. User Profile Screen
+    Show:
+
+* User photo/avatar
+* Name
+* Email
+* Fitness goal
+* Height/weight
+* Settings
+* Logout
+
+24. Settings Screen
+    Show:
+
+* Edit profile
+* Change fitness goal
+* Theme toggle light/dark
+* Notifications
+* Privacy policy
+* Terms
+* Logout
+
+TRAINER / ADMIN SIDE SCREENS
+
+25. Trainer Dashboard
+    Show:
+
+* Total clients
+* New messages
+* Booking requests
+* Video submissions
+* Recent client activity
+* Quick actions
+
+26. Clients Screen
+    Show list of users/clients:
+
+* Name
+* Goal
+* Last active
+* BMI
+* Progress status
+* Open client detail button
+
+27. Client Detail Screen
+    Show:
+
+* Client profile info
+* Fitness goal
+* BMI history
+* Workout progress
+* Meal plan progress
+* Submitted videos
+* Message client button
+
+28. Trainer Messages Screen
+    Show all conversations:
+
+* Client name
+* Last message
+* Time
+* Unread badge
+* Open chat
+
+29. Trainer Chat Detail Screen
+    Trainer can reply to user messages:
+
+* Chat bubbles
+* Text input
+* Send button
+* Attachment support placeholder
+
+30. Booking Requests Screen
+    Trainer can see session requests:
+
+* Client name
+* Session type
+* Date
+* Time
+* Note
+* Status: Pending, Accepted, Declined
+* Accept/decline buttons
+
+31. Video Submissions Screen
+    Trainer can see submitted exercise videos:
+
+* Client name
+* Exercise name
+* Date
+* Status
+* Open detail button
+
+32. Trainer Video Review Detail Screen
+    Trainer can:
+
+* Watch submitted video
+* Read user note
+* Add feedback
+* Mark as reviewed
+* Send feedback to user
+
+33. Trainer Profile / Settings Screen
+    Show:
+
+* Trainer name
+* Business info
+* Logout
+* Theme toggle
+
+WEBSITE REQUIREMENTS
+
+Create a modern responsive website for Crunchtime Fitness Training.
+
+Website pages/sections:
+
+1. Hero section
+
+* App/business name
+* Fitness training headline
+* Short description
+* Call-to-action button
+
+2. About section
+
+* Fitness training for athletes and regular consumers
+* Health, wellness, strength, and conditioning focus
+
+3. Services section
+
+* Personal training
+* Strength training
+* Conditioning
+* Meal guidance
+* Online coaching
+* Video review
+
+4. App Features section
+
+* Workouts
+* BMI
+* Meal plans
+* Progress tracking
+* Chat
+* Booking
+* Video submissions
+
+5. Trainer section
+
+* Trainer profile placeholder
+* Experience
+* Specialization
+
+6. Contact / Booking section
+
+* Name
+* Email
+* Message
+* Submit button
+
+7. Footer
+
+* Logo/app name
+* Quick links
+* Copyright
+
+DESIGN REQUIREMENTS
+
+* Beautiful modern fitness UI
+* Clean professional layout
+* Perfect spacing and padding
+* Strong typography
+* Rounded cards
+* Smooth navigation
+* Premium feel
+* Light theme and dark theme
+* Use brand logo color as primary color
+* Make buttons, cards, tabs, forms, and dashboards look polished
+* Fully responsive mobile app layout
+* Website should be responsive for desktop and mobile
+
+TECHNICAL REQUIREMENTS
+
+Use:
+
+* React Native Expo
+* TypeScript
+* Expo Router or React Navigation
+* Supabase for auth/database/storage
+* Zustand or Context API for state management
+* AsyncStorage for theme/session where needed
+* Expo ImagePicker for video upload/selection
+* Clean reusable components
+* Organized folder structure
+
+Create sample dummy data for:
+
+* Workouts
+* Exercises
+* Meal plans
+* Progress
+* Messages
+* Booking requests
+* Video submissions
+* Trainer feedback
+
+Database structure should support:
+
+* users/profiles
+* roles
+* workouts
+* exercises
+* meal_plans
+* progress
+* chat_messages
+* bookings
+* video_submissions
+* trainer_feedback
+
+Create clear files and comments for where Supabase keys should be added.
+
+IMPORTANT LIMITS
+
+Do not include full real-time AI posture correction or live alignment tracking in this version.
+
+Video submission should allow the user to submit a workout video for trainer review.
+
+Live video call screen should be prepared as a basic setup/placeholder unless API keys are provided.
+
+Play Store and App Store deployment are not required. The app should be ready for APK/AAB build and source code delivery.
+
+FINAL GOAL
+
+Create a complete, clean, modern, functional MVP for Crunchtime Fitness Training with:
+
+* User side
+* Trainer/admin side
+* Website
+* Light/dark theme
+* Auth
+* Workouts
+* BMI
+* Meal plans
+* Progress
+* Chat
+* Booking
+* Video submission
+* Basic live call screen
+* Clean source code
+* Professional UX flow

@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "JmyQwBJPTqfXnrJvcjgzD"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "crunchtime fitness icon"
+
+[[generated]]
+id = "_y7894ZiJUtRnevKEIPrR"
+uri = "file://artifacts/mobile/assets/images/splash.png"
+type = "image"
+title = "crunchtime splash background"
