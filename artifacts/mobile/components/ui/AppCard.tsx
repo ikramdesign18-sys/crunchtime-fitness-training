@@ -1,11 +1,11 @@
 import React from "react";
-import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
 interface AppCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   padding?: number;
 }

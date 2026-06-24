@@ -7,9 +7,6 @@ import { useTheme } from "@/contexts/ThemeContext";
  */
 export function useColors() {
   const { colorScheme } = useTheme();
-  const palette =
-    colorScheme === "dark" && "dark" in colors
-      ? (colors as Record<string, typeof colors.light>).dark
-      : colors.light;
+  const palette = colorScheme === "dark" ? colors.dark : colors.light;
   return { ...palette, radius: colors.radius, isDark: colorScheme === "dark" };
 }
