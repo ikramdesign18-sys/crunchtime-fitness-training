@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
@@ -21,17 +22,27 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (isLoading) return;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(
-        () => {
+        async () => {
           if (isAuthenticated && user) {
             if (user.role === "trainer") {
               router.replace("/(trainer)/dashboard");
             } else {
-              router.replace("/(user)/home");
+              const profile = await AsyncStorage.getItem("userProfile");
+              if (profile) {
+                router.replace("/(user)/home");
+              } else {
+                router.replace("/profile-setup");
+              }
             }
           } else {
-            router.replace("/onboarding");
+            const onboarded = await AsyncStorage.getItem("onboardingComplete");
+            if (onboarded) {
+              router.replace("/(auth)/login");
+            } else {
+              router.replace("/onboarding");
+            }
           }
         }
       );

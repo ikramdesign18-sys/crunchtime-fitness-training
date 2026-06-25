@@ -18,7 +18,7 @@ interface AuthContextValue {
   user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AppUser | null>;
   logout: () => Promise<void>;
 }
 
@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async () => false,
+  login: async () => null,
   logout: async () => {},
 });
 
@@ -55,16 +55,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AppUser | null> => {
     const match = DUMMY_USERS.find(
       (u) =>
         u.email.toLowerCase() === email.toLowerCase() &&
         u.password === password
     );
-    if (!match) return false;
+    if (!match) return null;
     await AsyncStorage.setItem("authUser", JSON.stringify(match.user));
     setUser(match.user);
-    return true;
+    return match.user;
   };
 
   const logout = async () => {

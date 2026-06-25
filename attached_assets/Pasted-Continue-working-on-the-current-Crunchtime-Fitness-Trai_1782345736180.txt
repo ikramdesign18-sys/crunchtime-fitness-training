@@ -1,0 +1,337 @@
+Continue working on the current Crunchtime Fitness Training app from the existing codebase.
+
+Do not restart the project. Do not create a new app. Fix and improve the current app only.
+
+App name: Crunchtime Fitness Training
+Primary color: #D66433
+
+Main goal:
+Make the complete mobile app work properly, fix bugs, improve UI quality, and complete the missing UX flows.
+
+IMPORTANT:
+Before adding any extra feature, first fix the current app bugs and make sure the full app works without crashes.
+
+1. FIX ALL BUGS
+
+Please check the full app and fix all issues:
+
+* Fix all TypeScript errors
+* Fix all build errors
+* Fix all navigation errors
+* Fix missing imports
+* Fix broken routes
+* Fix theme issues
+* Fix buttons that do not work
+* Fix any screen that crashes
+* Make sure mobile preview works properly
+* Run typecheck and fix all errors
+
+2. FIX LOGOUT BUTTON
+
+The logout button is currently not working.
+
+Please fix logout properly:
+
+* Logout should clear user session
+* Logout should clear local auth state
+* Logout should send user back to Login screen
+* If Supabase auth is connected, call supabase.auth.signOut()
+* If using local/mock auth, clear stored user data from AsyncStorage/state
+* After logout, user should not remain inside dashboard
+* Logout should work from both User Profile/Settings and Trainer Settings
+
+3. ADD MISSING ONBOARDING FLOW
+
+Create a beautiful onboarding flow before login.
+
+Flow:
+Splash → Onboarding → Login/Signup
+
+Create 3–4 onboarding screens:
+
+* Guided workout programs
+* BMI and progress tracking
+* Meal plans
+* Video submission and trainer support
+
+Onboarding requirements:
+
+* Modern clean fitness design
+* Next button
+* Skip button
+* Get Started button on last screen
+* Save onboarding completed state
+* After onboarding, go to Login screen
+* Existing users should not see onboarding again unless app data is reset
+
+4. ADD COMPLETE FITNESS PROFILE SETUP FLOW
+
+This is very important. New users must complete profile setup before going to Home Dashboard.
+
+Flow:
+Signup/Login → Fitness Profile Setup → Home Dashboard
+
+Do not send new user directly to Home if profile setup is incomplete.
+
+Create a premium multi-step setup flow with progress indicator.
+
+Step 1: Basic Information
+Fields:
+
+* Name
+* Age
+* Gender
+
+Gender options:
+
+* Male
+* Female
+* Other
+
+Step 2: Measurements & Goal
+Fields:
+
+* Height
+* Weight
+
+Fitness goal options:
+
+* Lose weight
+* Gain muscle
+* Improve strength
+* Improve conditioning
+* General fitness
+* Athlete training
+
+Step 3: Activity & Training Type
+Activity level options:
+
+* Beginner
+* Intermediate
+* Advanced
+* Athlete
+
+Preferred training type options:
+
+* Home workouts
+* Gym workouts
+* Strength training
+* Cardio
+* Conditioning
+* Athlete training
+* Full body training
+
+Step 4: Review & Complete
+Show all selected data:
+
+* Name
+* Age
+* Gender
+* Height
+* Weight
+* Fitness goal
+* Activity level
+* Preferred training type
+
+Add Complete Setup button.
+After clicking Complete Setup:
+
+* Save user profile data
+* Mark profile setup as completed
+* Navigate to Home Dashboard
+
+Also add ability to edit this data later from Profile/Settings.
+
+5. FIX PROFILE SETUP UI DESIGN
+
+The current profile setup buttons and layout are not perfect.
+
+Please improve:
+
+* Back and Next buttons should look professional
+* Buttons should not be too small
+* Buttons should have proper height, spacing, padding, and border radius
+* Primary button should be strong and clear
+* Secondary button should be clean and balanced
+* Make selected option chips look premium and obvious
+* Improve spacing between fields and sections
+* Make input fields look modern
+* Use better card/chip layout
+* Avoid awkward empty space
+* Keep consistent left/right margins
+* Add clean progress bar at top
+* Make typography stronger
+* Support light and dark theme
+* Use primary color #D66433
+
+6. IMPROVE MEAL PLANS SCREEN
+
+The current meal plan cards do not look polished enough.
+
+Redesign the Meal Plans screen so it looks premium, clean, and modern.
+
+Meal Plans screen should include:
+
+* Beautiful header title
+* Short subtitle
+* Category/filter chips if useful
+* Clean list of meal plan cards
+* Better spacing and hierarchy
+* Light and dark mode support
+
+Meal plan cards should include:
+
+* Meal plan name
+* Goal/category
+* Short description
+* Calories
+* Protein
+* Carbs
+* Fat
+* View Meal Plan button
+
+Design requirements for meal cards:
+
+* Do not use oversized heavy gradient cards
+* Make cards readable and professional
+* Use clean white/dark cards with primary accent #D66433
+* CTA/button should be aligned properly
+* Arrow/icon should be aligned properly
+* Cards should have proper padding, radius, and spacing
+* Make the UI feel like a premium fitness app
+
+Also improve Meal Detail screen:
+
+* Meal image placeholder
+* Meal name
+* Calories
+* Protein/carbs/fat
+* Ingredients
+* Preparation steps
+* Clean CTA button
+
+7. COMPLETE USER SIDE SCREENS
+
+Make sure these screens exist and navigation works:
+
+* Splash
+* Onboarding
+* Login
+* Signup
+* Forgot password
+* Fitness Profile Setup
+* Home Dashboard
+* Workouts
+* Workout Detail
+* Exercise Detail
+* Active Workout
+* Workout Completed
+* BMI Calculator
+* Meal Plans
+* Meal Detail
+* Progress
+* Chat
+* Session Booking
+* Video Submission
+* Video Submission Detail
+* Basic Live Video Call Screen
+* Notifications
+* User Profile
+* Settings
+
+8. COMPLETE TRAINER/ADMIN SIDE SCREENS
+
+Use one app with role-based login.
+
+Same login screen:
+
+* If role = user → open user dashboard
+* If role = trainer/admin → open trainer dashboard
+
+Trainer/admin screens:
+
+* Trainer Dashboard
+* Clients List
+* Client Detail
+* Messages
+* Chat Detail
+* Booking Requests
+* Video Submissions
+* Video Review Detail
+* Trainer Profile/Settings
+
+Trainer side should allow:
+
+* View clients
+* View user messages
+* Reply to messages
+* View booking requests
+* Accept/decline booking requests
+* View submitted videos
+* Add feedback to submitted videos
+* Mark video as reviewed
+
+9. CHECK COMPLETE UX FLOW
+
+Please test these flows:
+
+New user flow:
+Splash → Onboarding → Signup → Fitness Profile Setup → Home Dashboard
+
+Returning user flow:
+Login → If profile setup complete → Home Dashboard
+
+Trainer flow:
+Login with trainer account → Trainer Dashboard
+
+Logout flow:
+Logout → Clear session → Login screen
+
+Meal plan flow:
+Meal Plans → Meal Detail
+
+Workout flow:
+Workouts → Workout Detail → Exercise Detail → Active Workout → Workout Completed
+
+Video submission flow:
+Video Submission → Select/upload video → Submit → Trainer can see submission
+
+Booking flow:
+User books session → Trainer can see request
+
+10. DESIGN QUALITY
+
+Make the full app look polished and client-ready.
+
+Design style:
+
+* Modern fitness app
+* Clean layout
+* Premium spacing
+* Strong typography
+* Rounded cards
+* Professional buttons
+* Beautiful light and dark theme
+* Smooth navigation
+* Consistent UI components
+* Primary color #D66433
+* No broken placeholder screens
+* No ugly default UI
+
+11. FINAL REQUIREMENT
+
+After fixing:
+
+* Run the app
+* Run typecheck
+* Fix all errors
+* Test navigation
+* Test logout
+* Test onboarding
+* Test profile setup
+* Test meal cards
+* Make sure the app is complete and working properly
+
+Do not add advanced AI posture correction.
+Do not add Play Store/App Store deployment.
+Focus only on completing and fixing this mobile app properly.

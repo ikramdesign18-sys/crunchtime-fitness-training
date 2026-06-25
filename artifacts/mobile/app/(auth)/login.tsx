@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -42,12 +43,22 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validate()) return;
     setLoading(true);
-    const success = await login(email.trim().toLowerCase(), password);
+    const user = await login(email.trim().toLowerCase(), password);
     setLoading(false);
-    if (!success) {
+    if (!user) {
       Alert.alert("Login Failed", "Invalid email or password. Try the demo credentials below.");
+      return;
+    }
+    // Navigate based on role and profile completion
+    if (user.role === "trainer") {
+      router.replace("/(trainer)/dashboard");
     } else {
-      // Redirect is handled by root _layout via AuthContext
+      const profile = await AsyncStorage.getItem("userProfile");
+      if (profile) {
+        router.replace("/(user)/home");
+      } else {
+        router.replace("/profile-setup");
+      }
     }
   };
 
@@ -106,11 +117,9 @@ export default function LoginScreen() {
               onPress={() => router.push("/(auth)/forgot-password")}
               style={styles.forgotRow}
             >
-              <Text style={[styles.forgotText, { color: colors.primary }]}>
-                Forgot Password?
-              </Text>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
-            <AppButton title="Sign In" onPress={handleLogin} loading={loading} />
+            <AppButton title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
           </View>
 
           <View style={[styles.hintBox, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
@@ -158,7 +167,7 @@ const styles = StyleSheet.create({
   logo: { width: 72, height: 72 },
   title: { fontFamily: "Inter_700Bold", fontSize: 26, textAlign: "center", marginBottom: 6 },
   subtitle: { fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center", marginBottom: 32 },
-  form: {},
+  form: { marginBottom: 4 },
   forgotRow: { alignSelf: "flex-end", marginBottom: 20, marginTop: -8 },
   forgotText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   hintBox: { padding: 14, marginTop: 20 },
