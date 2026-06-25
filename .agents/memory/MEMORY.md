@@ -1,0 +1,1 @@
+- [Crunchtime Fitness Training](crunchtime-mobile.md) — Expo SDK 53 fitness app; role-based auth, AsyncStorage-only MVP, primary #D66433, notifications at ~0.32.17

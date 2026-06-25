@@ -34,7 +34,7 @@ export default function ExerciseDetailScreen() {
           </View>
         </LinearGradient>
 
-        <View style={styles.statsBar}>
+        <View style={[styles.statsBar, { backgroundColor: colors.card }]}>
           {[
             { label: "Sets", value: String(exercise.sets) },
             { label: "Reps", value: String(exercise.reps) },
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   heroCenter: { alignItems: "center" },
   heroIcon: { width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(214,100,51,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 14 },
   heroTitle: { fontFamily: "Inter_700Bold", fontSize: 24, color: "#FFF", textAlign: "center" },
-  statsBar: { flexDirection: "row", marginHorizontal: 16, marginTop: -20, borderRadius: 12, backgroundColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 6, overflow: "hidden" },
+  statsBar: { flexDirection: "row", marginHorizontal: 16, marginTop: -20, borderRadius: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 6, overflow: "hidden" },
   statItem: { flex: 1, alignItems: "center", paddingVertical: 16, borderRightWidth: 1 },
   statValue: { fontFamily: "Inter_700Bold", fontSize: 22 },
   statLabel: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },

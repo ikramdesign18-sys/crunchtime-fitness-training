@@ -70,7 +70,7 @@ export default function ProfileScreen() {
             { label: "Age", value: profile.age ?? "—", icon: "calendar-outline" as const },
             { label: "Gender", value: profile.gender ?? "—", icon: "person-outline" as const },
             { label: "Activity Level", value: profile.activity ?? "—", icon: "trending-up-outline" as const },
-            { label: "Training Style", value: profile.training ?? "—", icon: "barbell-outline" as const },
+            { label: "Training Style", value: Array.isArray(profile.trainingTypes) ? (profile.trainingTypes as string[]).join(", ") : (profile.training ?? "—"), icon: "barbell-outline" as const },
           ].map((item, i, arr) => (
             <View key={item.label} style={[styles.infoRow, { borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}>
               <View style={styles.infoLeft}>

@@ -1,0 +1,212 @@
+Continue working on the current Crunchtime Fitness Training app from the existing codebase.
+
+Do not create a new project. Do not restart the app. Only fix, complete, polish, and make the current app fully functional and ready for deployment/build.
+
+App name: Crunchtime Fitness Training
+Primary color: #D66433
+
+Main goal:
+Make the full mobile app complete, functional, stable, polished, and ready for APK/AAB build and final client testing.
+
+Important:
+Do not add random new features. First make sure all agreed features are complete and working properly.
+
+Check and fix the complete app flow for both sides:
+
+USER FLOW:
+Splash → Onboarding → Login/Signup → Fitness Profile Setup → User Home Dashboard
+
+Make sure the user side includes and works properly:
+
+* Splash screen
+* Onboarding screens
+* Login
+* Signup
+* Forgot password
+* Fitness profile setup
+* Home dashboard
+* Workouts
+* Workout detail
+* Exercise detail
+* Active workout
+* Workout completed
+* BMI calculator
+* Meal plans
+* Meal detail
+* Progress tracking
+* Chat/messaging
+* Session booking
+* Video submission
+* Video submission detail
+* Basic live video call screen/placeholder
+* Notifications
+* Profile
+* Settings
+* Logout
+
+TRAINER/ADMIN FLOW:
+Login with trainer/admin account → Trainer Dashboard
+
+Make sure the trainer/admin side includes and works properly:
+
+* Trainer dashboard
+* Clients list
+* Client detail
+* Messages
+* Chat detail
+* Booking requests
+* Video submissions
+* Video review detail
+* Trainer profile/settings
+* Logout
+
+ROLE-BASED AUTH CHECK:
+Use one login screen for both user and trainer.
+
+After login:
+
+* If role = user, send to user dashboard
+* If role = trainer/admin, send to trainer dashboard
+* If user profile setup is incomplete, send user to profile setup first
+* Normal signup users should become role = user by default
+* Trainer/admin account should be supported manually from database/mock data
+
+Please test and fix:
+
+* Signup flow
+* Login flow
+* Logout flow
+* User role routing
+* Trainer role routing
+* Returning user flow
+* Profile setup completed state
+* Onboarding completed state
+* Navigation between all screens
+
+FUNCTIONAL CHECK:
+Make sure these features are working properly:
+
+* User can complete profile setup
+* User can view workouts
+* User can open workout details
+* User can start and complete workout
+* User can calculate BMI
+* User can view meal plans
+* User can open meal details
+* User can view progress screen
+* User can open chat screen
+* User can send test/dummy messages if backend is not connected
+* User can create booking request
+* User can submit/select video for review
+* Trainer can view clients
+* Trainer can view messages
+* Trainer can view booking requests
+* Trainer can view video submissions
+* Trainer can add/view feedback if implemented
+* Logout works from both user and trainer sides
+
+UI/UX POLISH:
+Make the app look client-ready:
+
+* Clean modern fitness UI
+* Professional spacing
+* Strong typography
+* Beautiful cards
+* Proper button sizes
+* Proper touch areas
+* Consistent icons
+* Consistent primary color #D66433
+* Light and dark theme support
+* No ugly default UI
+* No broken placeholder screens
+* No layout issues on mobile screen
+* No overlapping text
+* No broken bottom tabs
+* No missing back buttons where needed
+
+MEAL PLAN SCREEN:
+Make sure the improved Meal Plans screen is complete:
+
+* Clean meal plan cards
+* Category/filter chips
+* Calories and macros
+* View Meal Plan CTA
+* Meal detail screen
+* Good spacing and readable layout
+* Works in light and dark mode
+
+PROFILE SETUP:
+Make sure the full 4-step profile setup is complete:
+
+* Step 1: Name, Age, Gender
+* Step 2: Height, Weight, Fitness Goal
+* Step 3: Activity Level, Preferred Training Type
+* Step 4: Review & Complete
+* Buttons should be polished and working
+* Continue button should validate required fields
+* Complete Setup should save data and open Home
+
+BUG FIXING:
+Please check and fix:
+
+* TypeScript errors
+* Build errors
+* Navigation errors
+* Missing imports
+* Broken routes
+* Broken buttons
+* Logout not working
+* Auth state issues
+* AsyncStorage issues
+* Theme issues
+* Screen crashes
+* Mobile preview errors
+
+DEPLOYMENT/BUILD READY:
+Make the project ready for final build:
+
+* Clean package dependencies
+* Remove unused broken code
+* Remove console errors where possible
+* Make sure Expo app runs successfully
+* Make sure typecheck is clean
+* Make sure app can be built as APK/AAB
+* Add clear notes if any environment variables are needed
+* Add clear notes where Supabase/API keys should be placed if backend is connected
+* Do not include paid API keys in code
+
+FINAL TESTING:
+Before finishing, test these complete flows:
+
+1. New user flow:
+   Splash → Onboarding → Signup → Profile Setup → Home
+
+2. Returning user flow:
+   Login → Home Dashboard
+
+3. Trainer flow:
+   Trainer login → Trainer Dashboard
+
+4. Logout flow:
+   Logout → Login screen
+
+5. Workout flow:
+   Workouts → Workout Detail → Exercise Detail → Active Workout → Workout Completed
+
+6. Meal flow:
+   Meal Plans → Meal Detail
+
+7. Booking flow:
+   User submits booking → Trainer can see booking request
+
+8. Video submission flow:
+   User submits/selects video → Trainer can see video submission
+
+9. Chat flow:
+   User opens chat → Trainer can open message screen
+
+10. Theme flow:
+    Light/dark mode works consistently
+
+Final result:
+The app should be complete, functional, stable, polished, and ready for deployment/build. Do not add extra advanced features unless required. Focus on making the current agreed app fully working and client-ready.
