@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +11,16 @@ import SectionHeader from "@/components/ui/SectionHeader";
 import StatCard from "@/components/ui/StatCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { BOOKINGS, CLIENTS, NOTIFICATIONS, VIDEO_SUBMISSIONS } from "@/lib/dummyData";
+import {
+  fetchClientProfiles,
+  fetchTrainerBookings,
+  fetchTrainerThreads,
+  fetchTrainerVideos,
+  type Booking,
+  type ChatThread,
+  type Profile,
+  type VideoSubmission,
+} from "@/lib/supabaseApi";
 
 export default function TrainerDashboardScreen() {
   const colors = useColors();
@@ -19,10 +28,31 @@ export default function TrainerDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [clients, setClients] = useState<Profile[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [videos, setVideos] = useState<VideoSubmission[]>([]);
+  const [threads, setThreads] = useState<ChatThread[]>([]);
 
-  const pendingBookings = BOOKINGS.filter((b) => b.status === "pending").length;
-  const pendingVideos = VIDEO_SUBMISSIONS.filter((v) => v.status === "submitted").length;
-  const unreadMessages = NOTIFICATIONS.filter((n) => !n.read && n.type === "message").length;
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      fetchClientProfiles(),
+      fetchTrainerBookings(user.id),
+      fetchTrainerVideos(user.id),
+      fetchTrainerThreads(user.id),
+    ])
+      .then(([clientRows, bookingRows, videoRows, threadRows]) => {
+        setClients(clientRows);
+        setBookings(bookingRows);
+        setVideos(videoRows);
+        setThreads(threadRows);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const pendingBookings = bookings.filter((b) => b.status === "pending").length;
+  const pendingVideos = videos.filter((v) => v.status === "submitted").length;
+  const unreadMessages = threads.filter((thread) => !!thread.last_message).length;
 
   return (
     <ScrollView
@@ -43,7 +73,7 @@ export default function TrainerDashboardScreen() {
 
       {/* Stats */}
       <View style={styles.statsGrid}>
-        <StatCard icon="people-outline" iconColor={colors.primary} label="Total Clients" value={CLIENTS.length} style={styles.statCard} />
+        <StatCard icon="people-outline" iconColor={colors.primary} label="Total Clients" value={clients.length} style={styles.statCard} />
         <StatCard icon="chatbubbles-outline" iconColor="#8B5CF6" label="New Messages" value={unreadMessages} style={styles.statCard} />
         <StatCard icon="calendar-outline" iconColor="#3B82F6" label="Pending Bookings" value={pendingBookings} style={styles.statCard} />
         <StatCard icon="videocam-outline" iconColor="#F59E0B" label="Video Reviews" value={pendingVideos} style={styles.statCard} />
@@ -73,23 +103,19 @@ export default function TrainerDashboardScreen() {
 
       {/* Recent Clients */}
       <SectionHeader title="Recent Clients" rightLabel="All" onRightPress={() => router.push("/(trainer)/clients")} style={{ marginTop: 20 }} />
-      {CLIENTS.slice(0, 5).map((client) => (
+      {clients.slice(0, 5).map((client) => (
         <AppCard
           key={client.id}
           onPress={() => router.push({ pathname: "/(trainer)/client-detail", params: { clientId: client.id } })}
           style={styles.clientCard}
         >
           <View style={styles.clientRow}>
-            <Avatar name={client.name} size={42} />
+            <Avatar name={client.full_name ?? "Client"} size={42} />
             <View style={styles.clientInfo}>
-              <Text style={[styles.clientName, { color: colors.foreground }]}>{client.name}</Text>
-              <Text style={[styles.clientGoal, { color: colors.mutedForeground }]}>{client.goal} · {client.lastActive}</Text>
+              <Text style={[styles.clientName, { color: colors.foreground }]}>{client.full_name ?? "Client"}</Text>
+              <Text style={[styles.clientGoal, { color: colors.mutedForeground }]}>{client.fitness_goal ?? "General Fitness"}</Text>
             </View>
-            <Badge
-              label={client.progressStatus}
-              color={client.progressStatus === "Excellent" ? "success" : client.progressStatus === "On Track" ? "info" : "warning"}
-              small
-            />
+            <Badge label={client.profile_setup_completed ? "Active" : "Setup Needed"} color={client.profile_setup_completed ? "success" : "warning"} small />
           </View>
         </AppCard>
       ))}

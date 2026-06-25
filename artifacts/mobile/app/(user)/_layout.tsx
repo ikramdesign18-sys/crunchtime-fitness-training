@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,13 +6,22 @@ import { BlurView } from "expo-blur";
 import { useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserTabLayout() {
   const colors = useColors();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+
+  if (isLoading) return null;
+  if (!isAuthenticated || !user) return <Redirect href="/(auth)/login" />;
+  if (user.role === "trainer" || user.role === "admin") {
+    return <Redirect href="/(trainer)/dashboard" />;
+  }
+  if (!user.profileSetupCompleted) return <Redirect href="/profile-setup" />;
 
   return (
     <Tabs

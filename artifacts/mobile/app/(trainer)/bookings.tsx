@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,8 +7,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppCard from "@/components/ui/AppCard";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { BOOKINGS, type Booking } from "@/lib/dummyData";
+import {
+  fetchTrainerBookings,
+  updateBookingStatus,
+  type Booking,
+} from "@/lib/supabaseApi";
 
 type Filter = "All" | "pending" | "accepted" | "declined";
 const FILTERS: Filter[] = ["All", "pending", "accepted", "declined"];
@@ -17,16 +22,27 @@ const STATUS_COLOR = { pending: "warning", accepted: "success", declined: "error
 
 export default function BookingsScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [filter, setFilter] = useState<Filter>("All");
-  const [bookings, setBookings] = useState<Booking[]>(BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchTrainerBookings(user.id).then(setBookings).catch(() => {});
+  }, [user]);
 
   const filtered = filter === "All" ? bookings : bookings.filter((b) => b.status === filter);
 
-  const updateStatus = (id: string, status: "accepted" | "declined") => {
+  const updateStatus = async (booking: Booking, status: "accepted" | "declined") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
+    setBookings((prev) => prev.map((b) => b.id === booking.id ? { ...b, status } : b));
+    try {
+      await updateBookingStatus(booking, status);
+    } catch {
+      fetchTrainerBookings(booking.trainer_id).then(setBookings).catch(() => {});
+    }
   };
 
   return (
@@ -57,21 +73,21 @@ export default function BookingsScreen() {
           filtered.map((booking) => (
             <AppCard key={booking.id} style={styles.bookingCard}>
               <View style={styles.bookingTop}>
-                <Avatar name={booking.clientName} size={40} />
+                <Avatar name={booking.clientName ?? "Client"} size={40} />
                 <View style={styles.bookingInfo}>
-                  <Text style={[styles.clientName, { color: colors.foreground }]}>{booking.clientName}</Text>
-                  <Text style={[styles.sessionType, { color: colors.primary }]}>{booking.sessionType}</Text>
+                  <Text style={[styles.clientName, { color: colors.foreground }]}>{booking.clientName ?? "Client"}</Text>
+                  <Text style={[styles.sessionType, { color: colors.primary }]}>{booking.session_type}</Text>
                 </View>
                 <Badge label={STATUS_LABEL[booking.status]} color={STATUS_COLOR[booking.status]} small />
               </View>
               <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
                 <View style={styles.metaItem}>
                   <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{booking.date}</Text>
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{booking.session_date}</Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{booking.time}</Text>
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{booking.session_time}</Text>
                 </View>
               </View>
               {booking.note ? (
@@ -80,14 +96,14 @@ export default function BookingsScreen() {
               {booking.status === "pending" && (
                 <View style={styles.actionRow}>
                   <TouchableOpacity
-                    onPress={() => updateStatus(booking.id, "declined")}
+                    onPress={() => updateStatus(booking, "declined")}
                     style={[styles.actionBtn, { backgroundColor: "#FEE2E2", borderRadius: colors.radius }]}
                   >
                     <Ionicons name="close-outline" size={18} color="#EF4444" />
                     <Text style={[styles.actionText, { color: "#EF4444" }]}>Decline</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => updateStatus(booking.id, "accepted")}
+                    onPress={() => updateStatus(booking, "accepted")}
                     style={[styles.actionBtn, { backgroundColor: "#DCFCE7", borderRadius: colors.radius, flex: 1.5 }]}
                   >
                     <Ionicons name="checkmark-outline" size={18} color="#16A34A" />

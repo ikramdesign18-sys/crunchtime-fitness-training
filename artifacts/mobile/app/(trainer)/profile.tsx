@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,7 +9,7 @@ import Avatar from "@/components/ui/Avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
-import { CLIENTS } from "@/lib/dummyData";
+import { fetchClientProfiles } from "@/lib/supabaseApi";
 
 export default function TrainerProfileScreen() {
   const colors = useColors();
@@ -18,6 +18,13 @@ export default function TrainerProfileScreen() {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [clientCount, setClientCount] = useState(0);
+
+  useEffect(() => {
+    fetchClientProfiles()
+      .then((clients) => setClientCount(clients.length))
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure?", [
@@ -43,7 +50,7 @@ export default function TrainerProfileScreen() {
       {/* Info Cards */}
       <View style={styles.statsRow}>
         <AppCard style={styles.statCard}>
-          <Text style={[styles.statValue, { color: colors.foreground }]}>{CLIENTS.length}</Text>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>{clientCount}</Text>
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Clients</Text>
         </AppCard>
         <AppCard style={styles.statCard}>

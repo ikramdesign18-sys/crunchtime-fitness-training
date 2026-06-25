@@ -1,22 +1,38 @@
 {
   "expo": {
     "name": "Crunchtime Fitness Training",
-    "slug": "mobile",
+    "slug": "crunchtime-fitness-training",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "crunchtimefitness",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1A1A1A"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.crunchtime.fitnesstraining",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Crunchtime Fitness Training uses the camera for trainer video calls.",
+        "NSMicrophoneUsageDescription": "Crunchtime Fitness Training uses the microphone for trainer video calls."
+      }
     },
-    "android": {},
+    "android": {
+      "package": "com.crunchtime.fitnesstraining",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#D66433"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,11 +44,17 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b1435dc7-cc25-470c-bb00-d7f4c2def398"
+      }
     }
   }
 }

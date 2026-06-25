@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,10 +15,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppButton from "@/components/ui/AppButton";
 import AppInput from "@/components/ui/AppInput";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function SignupScreen() {
   const colors = useColors();
+  const { signup } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
@@ -43,11 +46,22 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!validate()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    // In production, create the user in Supabase and then navigate.
-    // Here we go directly to profile setup (demo flow).
-    router.replace("/profile-setup");
+    try {
+      const user = await signup(name.trim(), email.trim().toLowerCase(), password);
+      if (user) {
+        router.replace("/profile-setup");
+      } else {
+        Alert.alert(
+          "Check Your Email",
+          "Your account was created. Confirm your email, then sign in to finish profile setup.",
+          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+        );
+      }
+    } catch (error) {
+      Alert.alert("Signup Failed", (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

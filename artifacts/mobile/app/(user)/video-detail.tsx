@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppCard from "@/components/ui/AppCard";
 import Badge from "@/components/ui/Badge";
 import { useColors } from "@/hooks/useColors";
-import { VIDEO_SUBMISSIONS } from "@/lib/dummyData";
+import { fetchVideoById, type VideoSubmission } from "@/lib/supabaseApi";
 
 const STATUS_COLOR = { submitted: "warning", reviewed: "info", feedback_received: "success" } as const;
 const STATUS_LABEL = { submitted: "Submitted", reviewed: "Under Review", feedback_received: "Feedback Ready" };
@@ -18,7 +18,14 @@ export default function VideoDetailScreen() {
   const insets = useSafeAreaInsets();
   const { videoId } = useLocalSearchParams<{ videoId: string }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const video = VIDEO_SUBMISSIONS.find((v) => v.id === videoId) ?? VIDEO_SUBMISSIONS[0];
+  const [video, setVideo] = useState<VideoSubmission | null>(null);
+
+  useEffect(() => {
+    if (!videoId) return;
+    fetchVideoById(videoId).then(setVideo).catch(() => {});
+  }, [videoId]);
+
+  if (!video) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -35,18 +42,18 @@ export default function VideoDetailScreen() {
           <View style={styles.playIcon}>
             <Ionicons name="play-circle-outline" size={60} color="rgba(255,255,255,0.6)" />
           </View>
-          <Text style={styles.videoLabel}>{video.exerciseName}</Text>
+          <Text style={styles.videoLabel}>{video.exercise_name}</Text>
         </View>
 
         {/* Info */}
         <AppCard style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Exercise</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>{video.exerciseName}</Text>
+            <Text style={[styles.infoValue, { color: colors.foreground }]}>{video.exercise_name}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Submitted</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>{new Date(video.submittedAt).toLocaleDateString()}</Text>
+            <Text style={[styles.infoValue, { color: colors.foreground }]}>{new Date(video.created_at).toLocaleDateString()}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Status</Text>
@@ -60,17 +67,17 @@ export default function VideoDetailScreen() {
             <Ionicons name="chatbubble-outline" size={16} color={colors.mutedForeground} />
             <Text style={[styles.noteLabel, { color: colors.mutedForeground }]}>Your Note</Text>
           </View>
-          <Text style={[styles.noteText, { color: colors.foreground }]}>{video.note}</Text>
+          <Text style={[styles.noteText, { color: colors.foreground }]}>{video.note ?? "No note provided."}</Text>
         </AppCard>
 
         {/* Trainer Feedback */}
-        {video.feedback ? (
+        {video.trainer_feedback ? (
           <AppCard style={[styles.feedbackCard, { borderLeftWidth: 4, borderLeftColor: colors.success }]}>
             <View style={styles.noteHeader}>
               <Ionicons name="chatbubbles-outline" size={16} color={colors.success} />
               <Text style={[styles.noteLabel, { color: colors.success }]}>Trainer Feedback</Text>
             </View>
-            <Text style={[styles.noteText, { color: colors.foreground }]}>{video.feedback}</Text>
+            <Text style={[styles.noteText, { color: colors.foreground }]}>{video.trainer_feedback}</Text>
           </AppCard>
         ) : (
           <AppCard style={styles.pendingCard}>

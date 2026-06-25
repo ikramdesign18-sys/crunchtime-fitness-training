@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,40 +7,48 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppCard from "@/components/ui/AppCard";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { VIDEO_SUBMISSIONS } from "@/lib/dummyData";
+import { fetchTrainerVideos, type VideoSubmission } from "@/lib/supabaseApi";
 
 const STATUS_COLOR = { submitted: "warning", reviewed: "info", feedback_received: "success" } as const;
 const STATUS_LABEL = { submitted: "Needs Review", reviewed: "Reviewed", feedback_received: "Feedback Sent" };
 
 export default function VideosScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [videos, setVideos] = useState<VideoSubmission[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchTrainerVideos(user.id).then(setVideos).catch(() => {});
+  }, [user]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 16 }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Video Reviews</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          {VIDEO_SUBMISSIONS.filter((v) => v.status === "submitted").length} pending review
+          {videos.filter((v) => v.status === "submitted").length} pending review
         </Text>
       </View>
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
-        {VIDEO_SUBMISSIONS.map((video) => (
+        {videos.map((video) => (
           <AppCard
             key={video.id}
             onPress={() => router.push({ pathname: "/(trainer)/video-review", params: { videoId: video.id } })}
             style={styles.videoCard}
           >
             <View style={styles.videoRow}>
-              <Avatar name={video.clientName} size={44} />
+              <Avatar name={video.clientName ?? "Client"} size={44} />
               <View style={styles.videoInfo}>
-                <Text style={[styles.clientName, { color: colors.foreground }]}>{video.clientName}</Text>
-                <Text style={[styles.exerciseName, { color: colors.primary }]}>{video.exerciseName}</Text>
+                <Text style={[styles.clientName, { color: colors.foreground }]}>{video.clientName ?? "Client"}</Text>
+                <Text style={[styles.exerciseName, { color: colors.primary }]}>{video.exercise_name}</Text>
                 <Text style={[styles.dateText, { color: colors.mutedForeground }]}>
-                  {new Date(video.submittedAt).toLocaleDateString()}
+                  {new Date(video.created_at).toLocaleDateString()}
                 </Text>
               </View>
               <View style={styles.statusWrap}>

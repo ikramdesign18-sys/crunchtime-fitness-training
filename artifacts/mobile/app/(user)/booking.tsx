@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppButton from "@/components/ui/AppButton";
 import AppInput from "@/components/ui/AppInput";
 import AppCard from "@/components/ui/AppCard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { createBooking } from "@/lib/supabaseApi";
 
 const SESSION_TYPES = [
   "Fitness Consultation",
@@ -23,13 +25,19 @@ function getNextDays(n: number) {
   for (let i = 0; i < n; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i + 1);
-    days.push({ label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }), short: d.toLocaleDateString("en-US", { weekday: "short" }), num: d.getDate() });
+    days.push({
+      label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+      short: d.toLocaleDateString("en-US", { weekday: "short" }),
+      num: d.getDate(),
+      value: d.toISOString().slice(0, 10),
+    });
   }
   return days;
 }
 
 export default function BookingScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [sessionType, setSessionType] = useState(SESSION_TYPES[0]);
@@ -41,11 +49,22 @@ export default function BookingScreen() {
   const days = getNextDays(7);
 
   const handleSubmit = async () => {
-    if (!selectedTime) return;
+    if (!selectedTime || !user) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await createBooking({
+        user_id: user.id,
+        session_type: sessionType,
+        session_date: days[selectedDay].value,
+        session_time: selectedTime,
+        note,
+      });
+      setSubmitted(true);
+    } catch (error) {
+      Alert.alert("Booking Failed", (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {

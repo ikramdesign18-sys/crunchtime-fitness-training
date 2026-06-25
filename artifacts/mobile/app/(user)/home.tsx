@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -18,7 +18,15 @@ import Badge from "@/components/ui/Badge";
 import SectionHeader from "@/components/ui/SectionHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { NOTIFICATIONS, PROGRESS_DATA, WORKOUTS } from "@/lib/dummyData";
+import { PROGRESS_DATA, WORKOUTS } from "@/lib/dummyData";
+import {
+  fetchBmiRecords,
+  fetchNotifications,
+  fetchWorkoutProgress,
+  type AppNotification,
+  type BmiRecord,
+  type WorkoutProgress,
+} from "@/lib/supabaseApi";
 
 function getBMICategory(bmi: number) {
   if (bmi < 18.5) return { label: "Underweight", color: "info" as const };
@@ -42,11 +50,43 @@ export default function HomeScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const todayWorkout = WORKOUTS[0];
-  const latestProgress = PROGRESS_DATA[PROGRESS_DATA.length - 1];
+  const [bmiRecords, setBmiRecords] = useState<BmiRecord[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutProgress[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      fetchBmiRecords(user.id),
+      fetchWorkoutProgress(user.id),
+      fetchNotifications(user.id),
+    ])
+      .then(([bmi, progress, notifs]) => {
+        setBmiRecords(bmi);
+        setWorkouts(progress);
+        setNotifications(notifs);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const latestProgress = useMemo(() => {
+    const fallback = PROGRESS_DATA[PROGRESS_DATA.length - 1];
+    const latestBmi = bmiRecords[bmiRecords.length - 1];
+    if (!latestBmi) return fallback;
+    return {
+      ...fallback,
+      weight: Number(latestBmi.weight),
+      bmi: Number(latestBmi.bmi),
+      workoutsCompleted: workouts.length,
+      caloriesBurned: workouts.reduce((sum, item) => sum + (item.calories_burned ?? 0), 0),
+    };
+  }, [bmiRecords, workouts]);
   const bmiCat = getBMICategory(latestProgress.bmi);
-  const unread = NOTIFICATIONS.filter((n) => !n.read).length;
-  const weekWorkouts = PROGRESS_DATA.slice(-1)[0].workoutsCompleted;
-  const totalCalories = PROGRESS_DATA.reduce((s, p) => s + p.caloriesBurned, 0);
+  const unread = notifications.filter((n) => !n.is_read).length;
+  const weekWorkouts = workouts.length || PROGRESS_DATA.slice(-1)[0].workoutsCompleted;
+  const totalCalories =
+    workouts.reduce((s, p) => s + (p.calories_burned ?? 0), 0) ||
+    PROGRESS_DATA.reduce((s, p) => s + p.caloriesBurned, 0);
 
   return (
     <ScrollView

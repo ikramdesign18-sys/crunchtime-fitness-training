@@ -1,3 +1,8 @@
+import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
+
 import app from "./app";
 import { logger } from "./lib/logger";
 

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,23 +7,56 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppCard from "@/components/ui/AppCard";
 import SectionHeader from "@/components/ui/SectionHeader";
 import StatCard from "@/components/ui/StatCard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { PROGRESS_DATA } from "@/lib/dummyData";
-
-const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
+import {
+  fetchBmiRecords,
+  fetchWorkoutProgress,
+  type BmiRecord,
+  type WorkoutProgress,
+} from "@/lib/supabaseApi";
 
 export default function ProgressScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const latest = PROGRESS_DATA[PROGRESS_DATA.length - 1];
-  const maxWeight = Math.max(...PROGRESS_DATA.map((p) => p.weight));
-  const minWeight = Math.min(...PROGRESS_DATA.map((p) => p.weight));
-  const weightLost = PROGRESS_DATA[0].weight - latest.weight;
-  const totalWorkouts = PROGRESS_DATA.reduce((s, p) => s + p.workoutsCompleted, 0);
-  const totalCalories = PROGRESS_DATA.reduce((s, p) => s + p.caloriesBurned, 0);
+  const [bmiRecords, setBmiRecords] = useState<BmiRecord[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutProgress[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([fetchBmiRecords(user.id), fetchWorkoutProgress(user.id)])
+      .then(([bmi, progress]) => {
+        setBmiRecords(bmi);
+        setWorkouts(progress);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const data = useMemo(() => {
+    if (bmiRecords.length === 0) return PROGRESS_DATA;
+    const totalCaloriesSaved = workouts.reduce((sum, item) => sum + (item.calories_burned ?? 0), 0);
+    return bmiRecords.map((record, index) => ({
+      date: record.created_at.slice(0, 10),
+      weight: Number(record.weight),
+      bmi: Number(record.bmi),
+      workoutsCompleted: index === bmiRecords.length - 1 ? workouts.length : 0,
+      caloriesBurned: index === bmiRecords.length - 1 ? totalCaloriesSaved : 0,
+    }));
+  }, [bmiRecords, workouts]);
+
+  const latest = data[data.length - 1];
+  const maxWeight = Math.max(...data.map((p) => p.weight));
+  const minWeight = Math.min(...data.map((p) => p.weight));
+  const weightLost = data[0].weight - latest.weight;
+  const totalWorkouts = workouts.length || data.reduce((s, p) => s + p.workoutsCompleted, 0);
+  const totalCalories =
+    workouts.reduce((s, p) => s + (p.calories_burned ?? 0), 0) ||
+    data.reduce((s, p) => s + p.caloriesBurned, 0);
 
   return (
     <ScrollView
@@ -45,7 +78,7 @@ export default function ProgressScreen() {
       <SectionHeader title="Weight History" style={{ marginTop: 8 }} />
       <AppCard style={styles.chartCard}>
         <View style={styles.chartArea}>
-          {PROGRESS_DATA.map((entry, i) => {
+          {data.map((entry, i) => {
             const range = maxWeight - minWeight || 1;
             const pct = (entry.weight - minWeight) / range;
             const barHeight = 80 + pct * 60;
@@ -57,7 +90,7 @@ export default function ProgressScreen() {
                     styles.bar,
                     {
                       height: barHeight,
-                      backgroundColor: i === PROGRESS_DATA.length - 1 ? colors.primary : colors.primaryLight,
+                      backgroundColor: i === data.length - 1 ? colors.primary : colors.primaryLight,
                       borderRadius: 4,
                     },
                   ]}
@@ -75,7 +108,7 @@ export default function ProgressScreen() {
       {/* Weekly workout bars */}
       <SectionHeader title="Weekly Workouts" style={{ marginTop: 8 }} />
       <AppCard style={styles.weekCard}>
-        {PROGRESS_DATA.map((entry, i) => (
+        {data.map((entry, i) => (
           <View key={i} style={styles.weekRow}>
             <Text style={[styles.weekDate, { color: colors.mutedForeground }]}>{entry.date.slice(5).replace("-", "/")}</Text>
             <View style={[styles.weekBarBg, { backgroundColor: colors.muted }]}>
@@ -89,15 +122,15 @@ export default function ProgressScreen() {
       {/* BMI History */}
       <SectionHeader title="BMI History" style={{ marginTop: 8 }} />
       <AppCard>
-        {PROGRESS_DATA.map((entry, i) => {
+        {data.map((entry, i) => {
           const bmi = entry.bmi;
           const color = bmi < 18.5 ? "#3B82F6" : bmi < 25 ? colors.success : bmi < 30 ? "#F59E0B" : "#EF4444";
           return (
-            <View key={i} style={[styles.bmiRow, { borderBottomColor: colors.border, borderBottomWidth: i < PROGRESS_DATA.length - 1 ? 1 : 0 }]}>
+            <View key={i} style={[styles.bmiRow, { borderBottomColor: colors.border, borderBottomWidth: i < data.length - 1 ? 1 : 0 }]}>
               <Text style={[styles.bmiDate, { color: colors.mutedForeground }]}>{entry.date}</Text>
               <Text style={[styles.bmiValue, { color }]}>{bmi}</Text>
-              <Text style={[styles.bmiChange, { color: i > 0 && entry.bmi < PROGRESS_DATA[i - 1].bmi ? colors.success : "#F59E0B" }]}>
-                {i > 0 ? (entry.bmi - PROGRESS_DATA[i - 1].bmi).toFixed(1) : "—"}
+              <Text style={[styles.bmiChange, { color: i > 0 && entry.bmi < data[i - 1].bmi ? colors.success : "#F59E0B" }]}>
+                {i > 0 ? (entry.bmi - data[i - 1].bmi).toFixed(1) : "—"}
               </Text>
             </View>
           );

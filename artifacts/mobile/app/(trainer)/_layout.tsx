@@ -1,17 +1,25 @@
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TrainerTabLayout() {
   const colors = useColors();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+
+  if (isLoading) return null;
+  if (!isAuthenticated || !user) return <Redirect href="/(auth)/login" />;
+  if (user.role !== "trainer" && user.role !== "admin") {
+    return <Redirect href={user.profileSetupCompleted ? "/(user)/home" : "/profile-setup"} />;
+  }
 
   return (
     <Tabs
@@ -91,6 +99,7 @@ export default function TrainerTabLayout() {
       />
       <Tabs.Screen name="client-detail" options={{ href: null }} />
       <Tabs.Screen name="chat-detail" options={{ href: null }} />
+      <Tabs.Screen name="video-call" options={{ href: null, tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="videos" options={{ href: null }} />
       <Tabs.Screen name="video-review" options={{ href: null }} />
     </Tabs>

@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
@@ -17,8 +17,13 @@ import AppInput from "@/components/ui/AppInput";
 import AppCard from "@/components/ui/AppCard";
 import Badge from "@/components/ui/Badge";
 import SectionHeader from "@/components/ui/SectionHeader";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { VIDEO_SUBMISSIONS } from "@/lib/dummyData";
+import {
+  fetchUserVideos,
+  submitVideo,
+  type VideoSubmission,
+} from "@/lib/supabaseApi";
 
 const EXERCISES = ["Barbell Squat", "Deadlift", "Bench Press", "Pull-Ups", "Overhead Press", "Romanian Deadlift", "Box Jumps", "Lunges"];
 
@@ -27,6 +32,7 @@ const STATUS_LABEL = { submitted: "Submitted", reviewed: "Reviewed", feedback_re
 
 export default function VideoSubmitScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -35,6 +41,12 @@ export default function VideoSubmitScreen() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showExPicker, setShowExPicker] = useState(false);
+  const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchUserVideos(user.id).then(setSubmissions).catch(() => {});
+  }, [user]);
 
   const pickVideo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -53,16 +65,27 @@ export default function VideoSubmitScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!videoUri && Platform.OS !== "web") {
+    if (!videoUri || !user) {
       Alert.alert("No Video Selected", "Please select a video before submitting.");
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    setSubmitted(true);
-    setVideoUri(null);
-    setNote("");
+    try {
+      const saved = await submitVideo({
+        user_id: user.id,
+        exercise_name: exercise,
+        note,
+        uri: videoUri,
+      });
+      setSubmissions((prev) => [saved, ...prev]);
+      setSubmitted(true);
+      setVideoUri(null);
+      setNote("");
+    } catch (error) {
+      Alert.alert("Upload Failed", (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,22 +98,22 @@ export default function VideoSubmitScreen() {
 
       {/* Past Submissions */}
       <SectionHeader title="Your Submissions" style={{ marginTop: 4 }} />
-      {VIDEO_SUBMISSIONS.filter((v) => v.clientId === "u1").map((v) => (
+      {submissions.map((v) => (
         <AppCard key={v.id} style={styles.subCard}>
           <View style={styles.subRow}>
             <View style={[styles.subIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="videocam-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.subInfo}>
-              <Text style={[styles.subExercise, { color: colors.foreground }]}>{v.exerciseName}</Text>
-              <Text style={[styles.subDate, { color: colors.mutedForeground }]}>{new Date(v.submittedAt).toLocaleDateString()}</Text>
+              <Text style={[styles.subExercise, { color: colors.foreground }]}>{v.exercise_name}</Text>
+              <Text style={[styles.subDate, { color: colors.mutedForeground }]}>{new Date(v.created_at).toLocaleDateString()}</Text>
             </View>
             <Badge label={STATUS_LABEL[v.status]} color={STATUS_COLOR[v.status]} small />
           </View>
-          {v.feedback && (
+          {v.trainer_feedback && (
             <View style={[styles.feedbackBox, { backgroundColor: colors.muted, borderRadius: 8, marginTop: 10 }]}>
               <Text style={[styles.feedbackLabel, { color: colors.mutedForeground }]}>Trainer Feedback</Text>
-              <Text style={[styles.feedbackText, { color: colors.foreground }]} numberOfLines={2}>{v.feedback}</Text>
+              <Text style={[styles.feedbackText, { color: colors.foreground }]} numberOfLines={2}>{v.trainer_feedback}</Text>
             </View>
           )}
         </AppCard>

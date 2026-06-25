@@ -1,10 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { NOTIFICATIONS, type AppNotification } from "@/lib/dummyData";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type AppNotification,
+} from "@/lib/supabaseApi";
 
 const ICON_MAP = {
   workout: { name: "barbell-outline" as const, color: "#D66433" },
@@ -16,26 +22,42 @@ const ICON_MAP = {
 
 export default function NotificationsScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const [notifications, setNotifications] = useState<AppNotification[]>(NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    if (!user) return;
+    fetchNotifications(user.id).then(setNotifications).catch(() => {});
+  }, [user]);
 
-  const today = notifications.filter((n) => n.time.includes("ago") || n.time === "Today");
-  const earlier = notifications.filter((n) => !n.time.includes("ago") && n.time !== "Today");
+  const markAllRead = async () => {
+    if (!user) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    await markAllNotificationsRead(user.id).catch(() => {});
+  };
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const today = notifications.filter((n) => {
+    const d = new Date(n.created_at);
+    return d.toDateString() === new Date().toDateString();
+  });
+  const earlier = notifications.filter((n) => !today.some((t) => t.id === n.id));
 
   const renderNotif = (notif: AppNotification) => {
     const icon = ICON_MAP[notif.type];
     return (
       <TouchableOpacity
         key={notif.id}
-        onPress={() => setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, read: true } : n))}
+        onPress={() => {
+          setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n));
+          markNotificationRead(notif.id).catch(() => {});
+        }}
         style={[
           styles.notifItem,
           {
-            backgroundColor: notif.read ? colors.background : colors.primaryLight,
+            backgroundColor: notif.is_read ? colors.background : colors.primaryLight,
             borderBottomColor: colors.border,
           },
         ]}
@@ -46,9 +68,11 @@ export default function NotificationsScreen() {
         <View style={styles.notifContent}>
           <Text style={[styles.notifTitle, { color: colors.foreground }]}>{notif.title}</Text>
           <Text style={[styles.notifBody, { color: colors.mutedForeground }]} numberOfLines={2}>{notif.body}</Text>
-          <Text style={[styles.notifTime, { color: colors.mutedForeground }]}>{notif.time}</Text>
+          <Text style={[styles.notifTime, { color: colors.mutedForeground }]}>
+            {new Date(notif.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </Text>
         </View>
-        {!notif.read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
+        {!notif.is_read && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
       </TouchableOpacity>
     );
   };

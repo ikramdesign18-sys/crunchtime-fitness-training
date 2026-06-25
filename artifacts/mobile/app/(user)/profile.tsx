@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -11,20 +10,22 @@ import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { PROGRESS_DATA } from "@/lib/dummyData";
+import { fetchBmiRecords, type BmiRecord } from "@/lib/supabaseApi";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const [profile, setProfile] = useState<Record<string, string> | null>(null);
+  const [latestBmi, setLatestBmi] = useState<BmiRecord | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem("userProfile").then((v) => {
-      if (v) setProfile(JSON.parse(v));
-    });
-  }, []);
+    if (!user) return;
+    fetchBmiRecords(user.id)
+      .then((records) => setLatestBmi(records[records.length - 1] ?? null))
+      .catch(() => {});
+  }, [user]);
 
   const latest = PROGRESS_DATA[PROGRESS_DATA.length - 1];
 
@@ -46,7 +47,7 @@ export default function ProfileScreen() {
         <Avatar name={user?.name ?? "User"} size={80} />
         <Text style={[styles.name, { color: colors.foreground }]}>{user?.name ?? "Athlete"}</Text>
         <Text style={[styles.email, { color: colors.mutedForeground }]}>{user?.email}</Text>
-        <Badge label={profile?.goal ?? "General Fitness"} color="primary" style={{ marginTop: 8 }} />
+        <Badge label={profile?.fitness_goal ?? "General Fitness"} color="primary" style={{ marginTop: 8 }} />
       </View>
 
       {/* Stats */}
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
         {[
           { label: "Height", value: profile?.height ? `${profile.height} cm` : "—" },
           { label: "Weight", value: profile?.weight ? `${profile.weight} kg` : "—" },
-          { label: "BMI", value: String(latest.bmi) },
+          { label: "BMI", value: latestBmi ? Number(latestBmi.bmi).toFixed(1) : String(latest.bmi) },
         ].map((s) => (
           <AppCard key={s.label} style={styles.statCard}>
             <Text style={[styles.statValue, { color: colors.foreground }]}>{s.value}</Text>
@@ -69,8 +70,8 @@ export default function ProfileScreen() {
           {[
             { label: "Age", value: profile.age ?? "—", icon: "calendar-outline" as const },
             { label: "Gender", value: profile.gender ?? "—", icon: "person-outline" as const },
-            { label: "Activity Level", value: profile.activity ?? "—", icon: "trending-up-outline" as const },
-            { label: "Training Style", value: Array.isArray(profile.trainingTypes) ? (profile.trainingTypes as string[]).join(", ") : (profile.training ?? "—"), icon: "barbell-outline" as const },
+            { label: "Activity Level", value: profile.activity_level ?? "—", icon: "trending-up-outline" as const },
+            { label: "Training Style", value: profile.training_types?.join(", ") ?? "—", icon: "barbell-outline" as const },
           ].map((item, i, arr) => (
             <View key={item.label} style={[styles.infoRow, { borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}>
               <View style={styles.infoLeft}>

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,19 +9,48 @@ import AppCard from "@/components/ui/AppCard";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import { useColors } from "@/hooks/useColors";
-import { CLIENTS, VIDEO_SUBMISSIONS, PROGRESS_DATA } from "@/lib/dummyData";
-
-const STATUS_COLOR = { Excellent: "success", "On Track": "info", "Needs Attention": "warning" } as const;
+import {
+  fetchBmiRecords,
+  fetchClientProfiles,
+  fetchTrainerVideos,
+  fetchWorkoutProgress,
+  type BmiRecord,
+  type Profile,
+  type VideoSubmission,
+  type WorkoutProgress,
+} from "@/lib/supabaseApi";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ClientDetailScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const client = CLIENTS.find((c) => c.id === clientId) ?? CLIENTS[0];
-  const clientVideos = VIDEO_SUBMISSIONS.filter((v) => v.clientId === clientId);
+  const [client, setClient] = useState<Profile | null>(null);
+  const [clientVideos, setClientVideos] = useState<VideoSubmission[]>([]);
+  const [bmiRecords, setBmiRecords] = useState<BmiRecord[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutProgress[]>([]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    fetchClientProfiles()
+      .then((profiles) => setClient(profiles.find((profile) => profile.id === clientId) ?? null))
+      .catch(() => {});
+    fetchBmiRecords(clientId).then(setBmiRecords).catch(() => {});
+    fetchWorkoutProgress(clientId).then(setWorkouts).catch(() => {});
+    if (user) {
+      fetchTrainerVideos(user.id)
+        .then((videos) => setClientVideos(videos.filter((video) => video.user_id === clientId)))
+        .catch(() => {});
+    }
+  }, [clientId, user]);
+
+  if (!client) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
+
+  const latestBmi = bmiRecords[bmiRecords.length - 1];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -35,18 +64,18 @@ export default function ClientDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {/* Profile */}
         <View style={styles.profileSection}>
-          <Avatar name={client.name} size={72} />
-          <Text style={[styles.clientName, { color: colors.foreground }]}>{client.name}</Text>
+          <Avatar name={client.full_name ?? "Client"} size={72} />
+          <Text style={[styles.clientName, { color: colors.foreground }]}>{client.full_name ?? "Client"}</Text>
           <Text style={[styles.clientEmail, { color: colors.mutedForeground }]}>{client.email}</Text>
-          <Badge label={client.progressStatus} color={STATUS_COLOR[client.progressStatus]} style={{ marginTop: 8 }} />
+          <Badge label={client.profile_setup_completed ? "Active" : "Setup Needed"} color={client.profile_setup_completed ? "success" : "warning"} style={{ marginTop: 8 }} />
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
           {[
-            { label: "BMI", value: String(client.bmi) },
+            { label: "BMI", value: latestBmi ? Number(latestBmi.bmi).toFixed(1) : "—" },
             { label: "Videos", value: String(clientVideos.length) },
-            { label: "Active", value: client.lastActive },
+            { label: "Workouts", value: String(workouts.length) },
           ].map((s) => (
             <AppCard key={s.label} style={styles.statCard}>
               <Text style={[styles.statValue, { color: colors.foreground }]}>{s.value}</Text>
@@ -61,13 +90,13 @@ export default function ClientDetailScreen() {
             <Ionicons name="trophy-outline" size={18} color={colors.primary} />
             <Text style={[styles.goalLabel, { color: colors.mutedForeground }]}>Fitness Goal</Text>
           </View>
-          <Text style={[styles.goalValue, { color: colors.foreground }]}>{client.goal}</Text>
+          <Text style={[styles.goalValue, { color: colors.foreground }]}>{client.fitness_goal ?? "General Fitness"}</Text>
         </AppCard>
 
         {/* Actions */}
         <AppButton
           title="Message Client"
-          onPress={() => router.push({ pathname: "/(trainer)/chat-detail", params: { clientId: client.id, clientName: client.name } })}
+          onPress={() => router.push({ pathname: "/(trainer)/chat-detail", params: { clientId: client.id, clientName: client.full_name ?? "Client" } })}
           style={{ marginBottom: 10 }}
         />
         <AppButton
@@ -88,8 +117,8 @@ export default function ClientDetailScreen() {
                     <Ionicons name="videocam-outline" size={18} color={colors.primary} />
                   </View>
                   <View style={styles.videoInfo}>
-                    <Text style={[styles.videoEx, { color: colors.foreground }]}>{v.exerciseName}</Text>
-                    <Text style={[styles.videoDate, { color: colors.mutedForeground }]}>{new Date(v.submittedAt).toLocaleDateString()}</Text>
+                    <Text style={[styles.videoEx, { color: colors.foreground }]}>{v.exercise_name}</Text>
+                    <Text style={[styles.videoDate, { color: colors.mutedForeground }]}>{new Date(v.created_at).toLocaleDateString()}</Text>
                   </View>
                   <Badge label={v.status.replace("_", " ")} color={v.status === "feedback_received" ? "success" : "warning"} small />
                 </View>
@@ -102,8 +131,10 @@ export default function ClientDetailScreen() {
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 8 }]}>Progress Summary</Text>
         <AppCard>
           <Text style={[styles.progressNote, { color: colors.mutedForeground }]}>
-            BMI trending from {PROGRESS_DATA[0].bmi} → {PROGRESS_DATA[PROGRESS_DATA.length - 1].bmi} over 8 weeks.
-            Consistent workout schedule with {PROGRESS_DATA.reduce((s, p) => s + p.workoutsCompleted, 0)} total sessions.
+            {latestBmi
+              ? `Latest BMI is ${Number(latestBmi.bmi).toFixed(1)} (${latestBmi.category}). `
+              : "No BMI records yet. "}
+            {workouts.length} workout sessions recorded.
           </Text>
         </AppCard>
       </ScrollView>

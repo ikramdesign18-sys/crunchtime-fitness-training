@@ -26,15 +26,12 @@ export default function SplashScreen() {
       Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(
         async () => {
           if (isAuthenticated && user) {
-            if (user.role === "trainer") {
+            if (user.role === "trainer" || user.role === "admin") {
               router.replace("/(trainer)/dashboard");
+            } else if (user.profileSetupCompleted) {
+              router.replace("/(user)/home");
             } else {
-              const profile = await AsyncStorage.getItem("userProfile");
-              if (profile) {
-                router.replace("/(user)/home");
-              } else {
-                router.replace("/profile-setup");
-              }
+              router.replace("/profile-setup");
             }
           } else {
             const onboarded = await AsyncStorage.getItem("onboardingComplete");

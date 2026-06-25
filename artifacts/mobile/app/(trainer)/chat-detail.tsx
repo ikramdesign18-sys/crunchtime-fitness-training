@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -13,31 +13,70 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { CHAT_MESSAGES, type ChatMessage } from "@/lib/dummyData";
+import { supabase } from "@/lib/supabase";
+import {
+  fetchThreadMessages,
+  getOrCreateThread,
+  sendThreadMessage,
+  type ChatMessage,
+  type ChatThread,
+} from "@/lib/supabaseApi";
 
 export default function ChatDetailScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { clientId, clientName } = useLocalSearchParams<{ clientId: string; clientName: string }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const [messages, setMessages] = useState<ChatMessage[]>([...CHAT_MESSAGES].reverse());
+  const [thread, setThread] = useState<ChatThread | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
 
-  const send = () => {
-    if (!text.trim()) return;
-    const msg: ChatMessage = {
-      id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
-      senderId: "t1",
-      senderName: "Coach Marcus",
-      text: text.trim(),
-      timestamp: new Date().toISOString(),
-      type: "trainer",
+  useEffect(() => {
+    if (!user || !clientId) return;
+    let activeThread: ChatThread | null = null;
+
+    getOrCreateThread(clientId, user.id)
+      .then(async (nextThread) => {
+        activeThread = nextThread;
+        setThread(nextThread);
+        setMessages(await fetchThreadMessages(nextThread.id));
+      })
+      .catch(() => {});
+
+    const channel = supabase
+      .channel(`trainer-chat-${user.id}-${clientId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        (payload) => {
+          const msg = payload.new as ChatMessage;
+          if (activeThread?.id === msg.thread_id) {
+            setMessages((prev) => [msg, ...prev.filter((item) => item.id !== msg.id)]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    setMessages((prev) => [msg, ...prev]);
+  }, [clientId, user]);
+
+  const send = async () => {
+    if (!text.trim() || !thread || !user) return;
+    const body = text.trim();
     setText("");
+    try {
+      const msg = await sendThreadMessage(thread, user.id, body);
+      setMessages((prev) => [msg, ...prev]);
+    } catch {
+      setText(body);
+    }
   };
 
   const fmtTime = (ts: string) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -49,7 +88,19 @@ export default function ChatDetailScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.clientName, { color: colors.foreground }]}>{clientName ?? "Client"}</Text>
-        <TouchableOpacity style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}>
+        <TouchableOpacity
+          onPress={() => {
+            if (!clientId) return;
+            router.push({
+              pathname: "/(trainer)/video-call" as never,
+              params: {
+                clientId,
+                clientName: clientName ?? "Client",
+              },
+            });
+          }}
+          style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}
+        >
           <Ionicons name="call-outline" size={18} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -61,13 +112,13 @@ export default function ChatDetailScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const isTrainer = item.type === "trainer";
+            const isTrainer = item.sender_id === user?.id;
             return (
               <View style={[styles.msgWrap, isTrainer ? styles.msgRight : styles.msgLeft]}>
                 <View style={[styles.bubble, { backgroundColor: isTrainer ? colors.primary : colors.card, borderRadius: 18, borderBottomRightRadius: isTrainer ? 4 : 18, borderBottomLeftRadius: isTrainer ? 18 : 4 }]}>
-                  <Text style={[styles.msgText, { color: isTrainer ? "#FFF" : colors.foreground }]}>{item.text}</Text>
+                  <Text style={[styles.msgText, { color: isTrainer ? "#FFF" : colors.foreground }]}>{item.message}</Text>
                 </View>
-                <Text style={[styles.msgTime, { color: colors.mutedForeground }]}>{fmtTime(item.timestamp)}</Text>
+                <Text style={[styles.msgTime, { color: colors.mutedForeground }]}>{fmtTime(item.created_at)}</Text>
               </View>
             );
           }}

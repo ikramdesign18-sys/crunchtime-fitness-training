@@ -1,5 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,7 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppButton from "@/components/ui/AppButton";
 import AppInput from "@/components/ui/AppInput";
 import AppCard from "@/components/ui/AppCard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { fetchBmiRecords, saveBmiRecord, type BmiRecord } from "@/lib/supabaseApi";
 
 type BMICategory = { label: string; range: string; color: string; suggestion: string };
 
@@ -27,12 +28,31 @@ function getBMIResult(bmi: number): BMICategory {
 
 export default function BMIScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [bmi, setBmi] = useState<number | null>(null);
   const [result, setResult] = useState<BMICategory | null>(null);
+  const [history, setHistory] = useState<BmiRecord[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchBmiRecords(user.id)
+      .then((records) => {
+        setHistory(records);
+        const latest = records[records.length - 1];
+        if (latest) {
+          setHeight(String(latest.height));
+          setWeight(String(latest.weight));
+          setBmi(Number(latest.bmi));
+          setResult(getBMIResult(Number(latest.bmi)));
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   const calculate = () => {
     const h = parseFloat(height) / 100;
@@ -47,13 +67,23 @@ export default function BMIScreen() {
   };
 
   const saveResult = async () => {
-    if (!bmi) return;
-    const entry = { date: new Date().toISOString().split("T")[0], bmi, height, weight };
-    const existing = await AsyncStorage.getItem("bmiHistory");
-    const list = existing ? JSON.parse(existing) : [];
-    list.push(entry);
-    await AsyncStorage.setItem("bmiHistory", JSON.stringify(list));
-    Alert.alert("Saved", "Your BMI result has been saved to your progress.");
+    if (!bmi || !result || !user) return;
+    setSaving(true);
+    try {
+      const saved = await saveBmiRecord({
+        user_id: user.id,
+        height: Number(height),
+        weight: Number(weight),
+        bmi,
+        category: result.label,
+      });
+      setHistory((prev) => [...prev, saved]);
+      Alert.alert("Saved", "Your BMI result has been saved to your progress.");
+    } catch (error) {
+      Alert.alert("Save Failed", (error as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -116,8 +146,29 @@ export default function BMIScreen() {
             <Text style={[styles.suggestionText, { color: colors.foreground }]}>{result.suggestion}</Text>
           </AppCard>
 
-          <AppButton title="Save Result" onPress={saveResult} variant="outline" />
+          <AppButton title="Save Result" onPress={saveResult} variant="outline" loading={saving} />
         </>
+      )}
+
+      {history.length > 0 && (
+        <AppCard style={styles.historyCard}>
+          <Text style={[styles.historyTitle, { color: colors.foreground }]}>History</Text>
+          {history.slice(-5).reverse().map((entry, index) => (
+            <View
+              key={entry.id}
+              style={[
+                styles.historyRow,
+                { borderBottomColor: colors.border, borderBottomWidth: index < Math.min(history.length, 5) - 1 ? 1 : 0 },
+              ]}
+            >
+              <Text style={[styles.historyDate, { color: colors.mutedForeground }]}>
+                {new Date(entry.created_at).toLocaleDateString()}
+              </Text>
+              <Text style={[styles.historyValue, { color: colors.foreground }]}>{Number(entry.bmi).toFixed(1)}</Text>
+              <Text style={[styles.historyCategory, { color: colors.mutedForeground }]}>{entry.category}</Text>
+            </View>
+          ))}
+        </AppCard>
       )}
     </ScrollView>
   );
@@ -142,4 +193,10 @@ const styles = StyleSheet.create({
   suggestionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   suggestionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   suggestionText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
+  historyCard: { marginTop: 16 },
+  historyTitle: { fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 8 },
+  historyRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, gap: 10 },
+  historyDate: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
+  historyValue: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  historyCategory: { width: 92, textAlign: "right", fontFamily: "Inter_500Medium", fontSize: 12 },
 });

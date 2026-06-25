@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -43,22 +42,23 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validate()) return;
     setLoading(true);
-    const user = await login(email.trim().toLowerCase(), password);
-    setLoading(false);
-    if (!user) {
-      Alert.alert("Login Failed", "Invalid email or password. Try the demo credentials below.");
-      return;
-    }
-    // Navigate based on role and profile completion
-    if (user.role === "trainer") {
-      router.replace("/(trainer)/dashboard");
-    } else {
-      const profile = await AsyncStorage.getItem("userProfile");
-      if (profile) {
+    try {
+      const user = await login(email.trim().toLowerCase(), password);
+      if (!user) {
+        Alert.alert("Login Failed", "Unable to restore your profile. Please try again.");
+        return;
+      }
+      if (user.role === "trainer" || user.role === "admin") {
+        router.replace("/(trainer)/dashboard");
+      } else if (user.profileSetupCompleted) {
         router.replace("/(user)/home");
       } else {
         router.replace("/profile-setup");
       }
+    } catch (error) {
+      Alert.alert("Login Failed", (error as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,16 +122,6 @@ export default function LoginScreen() {
             <AppButton title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
           </View>
 
-          <View style={[styles.hintBox, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
-            <Text style={[styles.hintTitle, { color: colors.mutedForeground }]}>Demo Credentials</Text>
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              User: user@test.com / password123
-            </Text>
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Trainer: trainer@test.com / password123
-            </Text>
-          </View>
-
           <TouchableOpacity
             onPress={() => router.push("/(auth)/signup")}
             style={styles.signupRow}
@@ -170,9 +160,6 @@ const styles = StyleSheet.create({
   form: { marginBottom: 4 },
   forgotRow: { alignSelf: "flex-end", marginBottom: 20, marginTop: -8 },
   forgotText: { fontFamily: "Inter_500Medium", fontSize: 14 },
-  hintBox: { padding: 14, marginTop: 20 },
-  hintTitle: { fontFamily: "Inter_600SemiBold", fontSize: 12, marginBottom: 4 },
-  hintText: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
   signupRow: { flexDirection: "row", justifyContent: "center", marginTop: 24 },
   signupText: { fontFamily: "Inter_400Regular", fontSize: 15 },
   signupLink: { fontFamily: "Inter_600SemiBold", fontSize: 15 },

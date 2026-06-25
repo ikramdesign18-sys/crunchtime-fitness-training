@@ -39,9 +39,9 @@ function getAppName() {
   try {
     const appJsonPath = path.resolve(__dirname, "..", "app.json");
     const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf-8"));
-    return appJson.expo?.name || "App Landing Page";
+    return appJson.expo?.name || "Crunchtime Fitness Training";
   } catch {
-    return "App Landing Page";
+    return "Crunchtime Fitness Training";
   }
 }
 

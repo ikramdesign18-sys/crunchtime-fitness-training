@@ -1,19 +1,26 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Avatar from "@/components/ui/Avatar";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { CLIENTS, CHAT_MESSAGES } from "@/lib/dummyData";
+import { fetchTrainerThreads, type ChatThread } from "@/lib/supabaseApi";
 
 export default function MessagesScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const lastMsg = CHAT_MESSAGES[CHAT_MESSAGES.length - 1];
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchTrainerThreads(user.id).then(setThreads).catch(() => {});
+  }, [user]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -21,26 +28,26 @@ export default function MessagesScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>Messages</Text>
       </View>
       <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
-        {CLIENTS.map((client, i) => (
+        {threads.map((thread, i) => (
           <TouchableOpacity
-            key={client.id}
-            onPress={() => router.push({ pathname: "/(trainer)/chat-detail", params: { clientId: client.id, clientName: client.name } })}
+            key={thread.id}
+            onPress={() => router.push({ pathname: "/(trainer)/chat-detail", params: { clientId: thread.user_id, clientName: thread.clientName ?? "Client" } })}
             style={[styles.convoItem, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
           >
             <View style={styles.avatarWrap}>
-              <Avatar name={client.name} size={48} />
+              <Avatar name={thread.clientName ?? "Client"} size={48} />
               {i === 0 && <View style={[styles.onlineDot, { backgroundColor: colors.success }]} />}
             </View>
             <View style={styles.convoContent}>
               <View style={styles.convoTop}>
-                <Text style={[styles.convoName, { color: colors.foreground }]}>{client.name}</Text>
+                <Text style={[styles.convoName, { color: colors.foreground }]}>{thread.clientName ?? "Client"}</Text>
                 <Text style={[styles.convoTime, { color: colors.mutedForeground }]}>
-                  {i === 0 ? "10m ago" : `${i + 1}h ago`}
+                  {thread.last_message_at ? new Date(thread.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                 </Text>
               </View>
               <View style={styles.convoBottom}>
                 <Text style={[styles.convoLast, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {i === 0 ? lastMsg.text : `Last message from ${client.name.split(" ")[0]}`}
+                  {thread.last_message ?? "No messages yet"}
                 </Text>
                 {i === 0 && (
                   <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>

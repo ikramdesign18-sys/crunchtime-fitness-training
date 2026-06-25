@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +10,12 @@ import AppCard from "@/components/ui/AppCard";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import { useColors } from "@/hooks/useColors";
-import { VIDEO_SUBMISSIONS } from "@/lib/dummyData";
+import {
+  fetchVideoById,
+  markVideoReviewed,
+  updateVideoFeedback,
+  type VideoSubmission,
+} from "@/lib/supabaseApi";
 
 export default function VideoReviewScreen() {
   const colors = useColors();
@@ -19,22 +24,51 @@ export default function VideoReviewScreen() {
   const { videoId } = useLocalSearchParams<{ videoId: string }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const video = VIDEO_SUBMISSIONS.find((v) => v.id === videoId) ?? VIDEO_SUBMISSIONS[0];
-  const [feedback, setFeedback] = useState(video.feedback ?? "");
-  const [submitted, setSubmitted] = useState(video.status === "feedback_received");
+  const [video, setVideo] = useState<VideoSubmission | null>(null);
+  const [feedback, setFeedback] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!videoId) return;
+    fetchVideoById(videoId)
+      .then((nextVideo) => {
+        setVideo(nextVideo);
+        setFeedback(nextVideo?.trainer_feedback ?? "");
+        setSubmitted(nextVideo?.status === "feedback_received");
+      })
+      .catch(() => {});
+  }, [videoId]);
+
   const handleSend = async () => {
-    if (!feedback.trim()) {
+    if (!feedback.trim() || !video) {
       Alert.alert("Feedback Required", "Please add feedback before sending.");
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setSubmitted(true);
-    Alert.alert("Feedback Sent", "Your feedback has been sent to the client.");
+    try {
+      const saved = await updateVideoFeedback(video, feedback.trim());
+      setVideo(saved);
+      setSubmitted(true);
+      Alert.alert("Feedback Sent", "Your feedback has been sent to the client.");
+    } catch (error) {
+      Alert.alert("Feedback Failed", (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleReviewed = async () => {
+    if (!video) return;
+    setSubmitted(true);
+    try {
+      setVideo(await markVideoReviewed(video));
+    } catch {
+      setSubmitted(false);
+    }
+  };
+
+  if (!video) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -50,12 +84,12 @@ export default function VideoReviewScreen() {
         {/* Client Info */}
         <AppCard style={styles.clientCard}>
           <View style={styles.clientRow}>
-            <Avatar name={video.clientName} size={44} />
+            <Avatar name={video.clientName ?? "Client"} size={44} />
             <View style={styles.clientInfo}>
-              <Text style={[styles.clientName, { color: colors.foreground }]}>{video.clientName}</Text>
-              <Text style={[styles.exerciseName, { color: colors.primary }]}>{video.exerciseName}</Text>
+              <Text style={[styles.clientName, { color: colors.foreground }]}>{video.clientName ?? "Client"}</Text>
+              <Text style={[styles.exerciseName, { color: colors.primary }]}>{video.exercise_name}</Text>
               <Text style={[styles.dateText, { color: colors.mutedForeground }]}>
-                Submitted {new Date(video.submittedAt).toLocaleDateString()}
+                Submitted {new Date(video.created_at).toLocaleDateString()}
               </Text>
             </View>
             <Badge
@@ -69,8 +103,8 @@ export default function VideoReviewScreen() {
         {/* Video Placeholder */}
         <View style={[styles.videoPlayer, { backgroundColor: "#1A1A1A", borderRadius: colors.radius }]}>
           <Ionicons name="play-circle-outline" size={60} color="rgba(255,255,255,0.5)" />
-          <Text style={styles.videoPlayerText}>{video.exerciseName}</Text>
-          <Text style={styles.videoPlayerSub}>Video playback requires device integration</Text>
+          <Text style={styles.videoPlayerText}>{video.exercise_name}</Text>
+          <Text style={styles.videoPlayerSub}>{video.video_url}</Text>
         </View>
 
         {/* Client Note */}
@@ -79,7 +113,7 @@ export default function VideoReviewScreen() {
             <Ionicons name="chatbubble-outline" size={14} color={colors.mutedForeground} />
             <Text style={[styles.noteLabel, { color: colors.mutedForeground }]}>Client Note</Text>
           </View>
-          <Text style={[styles.noteText, { color: colors.foreground }]}>{video.note}</Text>
+          <Text style={[styles.noteText, { color: colors.foreground }]}>{video.note ?? "No note provided."}</Text>
         </AppCard>
 
         {/* Feedback */}
@@ -98,7 +132,7 @@ export default function VideoReviewScreen() {
           <View style={styles.btnRow}>
             <AppButton
               title="Mark as Reviewed"
-              onPress={() => setSubmitted(true)}
+              onPress={handleReviewed}
               variant="outline"
               style={{ flex: 1 }}
             />

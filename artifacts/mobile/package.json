@@ -56,6 +56,12 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "expo-notifications": "~0.32.17"
+    "@supabase/supabase-js": "^2.108.2",
+    "expo-dev-client": "^6.0.21",
+    "expo-file-system": "~19.0.23",
+    "expo-notifications": "~0.32.17",
+    "expo-secure-store": "~15.0.8",
+    "react-native-agora": "^4.6.2",
+    "react-native-url-polyfill": "^3.0.0"
   }
 }

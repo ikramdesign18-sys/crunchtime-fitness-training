@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   FlatList,
   Platform,
@@ -12,29 +13,76 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { CHAT_MESSAGES, type ChatMessage } from "@/lib/dummyData";
+import { supabase } from "@/lib/supabase";
+import {
+  fetchThreadMessages,
+  findTrainerProfile,
+  getOrCreateThread,
+  sendThreadMessage,
+  type ChatMessage,
+  type ChatThread,
+  type Profile,
+} from "@/lib/supabaseApi";
 
 export default function ChatScreen() {
   const colors = useColors();
+  const { user } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const [messages, setMessages] = useState<ChatMessage[]>([...CHAT_MESSAGES].reverse());
+  const [thread, setThread] = useState<ChatThread | null>(null);
+  const [trainer, setTrainer] = useState<Profile | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
 
-  const send = () => {
-    if (!text.trim()) return;
-    const msg: ChatMessage = {
-      id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
-      senderId: "u1",
-      senderName: "You",
-      text: text.trim(),
-      timestamp: new Date().toISOString(),
-      type: "user",
+  useEffect(() => {
+    if (!user) return;
+    let activeThread: ChatThread | null = null;
+
+    findTrainerProfile()
+      .then((trainerProfile) => {
+        setTrainer(trainerProfile);
+        return getOrCreateThread(user.id, trainerProfile.id);
+      })
+      .then(async (nextThread) => {
+        activeThread = nextThread;
+        setThread(nextThread);
+        setMessages(await fetchThreadMessages(nextThread.id));
+      })
+      .catch(() => {});
+
+    const channel = supabase
+      .channel(`user-chat-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        (payload) => {
+          const msg = payload.new as ChatMessage;
+          if (activeThread?.id === msg.thread_id) {
+            setMessages((prev) => [msg, ...prev.filter((item) => item.id !== msg.id)]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    setMessages((prev) => [msg, ...prev]);
+  }, [user]);
+
+  const send = async () => {
+    if (!text.trim() || !thread || !user) return;
+    const body = text.trim();
     setText("");
+    try {
+      const msg = await sendThreadMessage(thread, user.id, body);
+      setMessages((prev) => [msg, ...prev]);
+    } catch {
+      setText(body);
+    }
   };
 
   const fmtTime = (ts: string) => {
@@ -43,12 +91,14 @@ export default function ChatScreen() {
   };
 
   const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
-    const isUser = item.type === "user";
-    const showName = !isUser && (index === messages.length - 1 || messages[index + 1]?.type === "user");
+    const isUser = item.sender_id === user?.id;
+    const showName = !isUser && (index === messages.length - 1 || messages[index + 1]?.sender_id === user?.id);
     return (
       <View style={[styles.msgWrap, isUser ? styles.msgRight : styles.msgLeft]}>
         {!isUser && showName && (
-          <Text style={[styles.senderName, { color: colors.mutedForeground }]}>{item.senderName}</Text>
+          <Text style={[styles.senderName, { color: colors.mutedForeground }]}>
+            {trainer?.full_name ?? "Trainer"}
+          </Text>
         )}
         <View
           style={[
@@ -67,40 +117,49 @@ export default function ChatScreen() {
           ]}
         >
           <Text style={[styles.msgText, { color: isUser ? "#FFF" : colors.foreground }]}>
-            {item.text}
+            {item.message}
           </Text>
         </View>
-        <Text style={[styles.msgTime, { color: colors.mutedForeground }]}>{fmtTime(item.timestamp)}</Text>
+        <Text style={[styles.msgTime, { color: colors.mutedForeground }]}>{fmtTime(item.created_at)}</Text>
       </View>
     );
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.trainerInfo}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>CM</Text>
+            <Text style={styles.avatarText}>{(trainer?.full_name ?? "TR").slice(0, 2).toUpperCase()}</Text>
           </View>
           <View>
-            <Text style={[styles.trainerName, { color: colors.foreground }]}>Coach Marcus</Text>
+            <Text style={[styles.trainerName, { color: colors.foreground }]}>
+              {trainer?.full_name ?? "Trainer"}
+            </Text>
             <View style={styles.onlineRow}>
               <View style={[styles.dot, { backgroundColor: colors.success }]} />
-              <Text style={[styles.onlineText, { color: colors.mutedForeground }]}>Online</Text>
+              <Text style={[styles.onlineText, { color: colors.mutedForeground }]}>Available</Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={() => {}} style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}>
+        <TouchableOpacity
+          onPress={() => {
+            if (!trainer) return;
+            router.push({
+              pathname: "/(user)/video-call",
+              params: {
+                trainerId: trainer.id,
+                trainerName: trainer.full_name ?? "Trainer",
+              },
+            });
+          }}
+          style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}
+        >
           <Ionicons name="call-outline" size={18} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior="padding"
-        keyboardVerticalOffset={0}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
         <FlatList
           data={messages}
           renderItem={renderItem}

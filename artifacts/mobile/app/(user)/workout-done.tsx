@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
@@ -8,10 +7,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppButton from "@/components/ui/AppButton";
 import AppCard from "@/components/ui/AppCard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { saveWorkoutProgress } from "@/lib/supabaseApi";
 
 export default function WorkoutDoneScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { duration, exercises, calories } = useLocalSearchParams<{ duration: string; exercises: string; calories: string }>();
@@ -29,16 +31,19 @@ export default function WorkoutDoneScreen() {
   }, []);
 
   const handleSave = async () => {
-    const entry = {
-      date: new Date().toISOString().split("T")[0],
-      duration: duration ?? "0",
-      exercises: exercises ?? "0",
-      calories: calories ?? "0",
-    };
-    const existing = await AsyncStorage.getItem("completedWorkouts");
-    const list = existing ? JSON.parse(existing) : [];
-    list.push(entry);
-    await AsyncStorage.setItem("completedWorkouts", JSON.stringify(list));
+    if (user) {
+      try {
+        await saveWorkoutProgress({
+          user_id: user.id,
+          workout_id: "local-workout",
+          workout_title: "Completed Workout",
+          duration_minutes: Number(duration ?? 0),
+          calories_burned: Number(calories ?? 0),
+        });
+      } catch (error) {
+        console.warn("Workout progress save failed", (error as Error).message);
+      }
+    }
     router.replace("/(user)/home");
   };
 

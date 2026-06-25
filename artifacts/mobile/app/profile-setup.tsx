@@ -1,7 +1,7 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +17,7 @@ import AppButton from "@/components/ui/AppButton";
 import AppInput from "@/components/ui/AppInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { updateProfile } from "@/lib/supabaseApi";
 
 const GOALS = [
   { label: "Lose Weight", icon: "trending-down-outline" as const },
@@ -57,18 +58,20 @@ export default function ProfileSetupScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile, setProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const [name, setName] = useState(user?.name ?? "");
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("Male");
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
-  const [goal, setGoal] = useState("General Fitness");
-  const [activity, setActivity] = useState("Beginner");
-  const [trainingTypes, setTrainingTypes] = useState<string[]>(["Gym Workouts"]);
+  const [name, setName] = useState(profile?.full_name ?? user?.name ?? "");
+  const [age, setAge] = useState(profile?.age ? String(profile.age) : "");
+  const [gender, setGender] = useState(profile?.gender ?? "Male");
+  const [height, setHeight] = useState(profile?.height ? String(profile.height) : "");
+  const [weight, setWeight] = useState(profile?.weight ? String(profile.weight) : "");
+  const [goal, setGoal] = useState(profile?.fitness_goal ?? "General Fitness");
+  const [activity, setActivity] = useState(profile?.activity_level ?? "Beginner");
+  const [trainingTypes, setTrainingTypes] = useState<string[]>(
+    profile?.training_types?.length ? profile.training_types : ["Gym Workouts"]
+  );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const progress = (step + 1) / TOTAL_STEPS;
@@ -91,21 +94,31 @@ export default function ProfileSetupScreen() {
   };
 
   const handleSave = async () => {
+    if (!user) {
+      Alert.alert("Session Required", "Please sign in again before saving your profile.");
+      router.replace("/(auth)/login");
+      return;
+    }
     setSaving(true);
-    const profile = {
-      name: name.trim() || user?.name,
-      age,
-      gender,
-      height,
-      weight,
-      goal,
-      activity,
-      trainingTypes,
-      completedAt: new Date().toISOString(),
-    };
-    await AsyncStorage.setItem("userProfile", JSON.stringify(profile));
-    setSaving(false);
-    router.replace("/(user)/home");
+    try {
+      const saved = await updateProfile(user.id, {
+        full_name: name.trim() || user.name,
+        age: Number(age),
+        gender,
+        height: Number(height),
+        weight: Number(weight),
+        fitness_goal: goal,
+        activity_level: activity,
+        training_types: trainingTypes,
+        profile_setup_completed: true,
+      });
+      setProfile(saved);
+      router.replace("/(user)/home");
+    } catch (error) {
+      Alert.alert("Profile Not Saved", (error as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const infoRow = (label: string, value: string) => (
