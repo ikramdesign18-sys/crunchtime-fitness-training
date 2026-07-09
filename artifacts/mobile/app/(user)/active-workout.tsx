@@ -14,27 +14,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useColors } from "@/hooks/useColors";
-import { WORKOUTS } from "@/lib/dummyData";
+import { fetchWorkoutVideoById, type TrainerWorkoutVideo } from "@/lib/supabaseApi";
 
 export default function ActiveWorkoutScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
-  const workout = WORKOUTS.find((w) => w.id === workoutId) ?? WORKOUTS[0];
-  const exercises = workout.exercises;
 
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [workout, setWorkout] = useState<TrainerWorkoutVideo | null>(null);
+  const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [timer, setTimer] = useState(exercises[0]?.restSeconds ?? 60);
-  const [phase, setPhase] = useState<"work" | "rest">("work");
+  const [timer, setTimer] = useState(60);
   const [startTime] = useState(Date.now());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const finishedRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const current = exercises[currentIdx];
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const totalSeconds = Math.max(60, (workout?.duration ?? 1) * 60);
+  const exerciseCount = Math.max(0, workout?.exercises ?? 0);
 
   useEffect(() => {
     Animated.loop(
@@ -46,50 +46,69 @@ export default function ActiveWorkoutScreen() {
   }, []);
 
   useEffect(() => {
-    if (paused) {
+    if (!workoutId) {
+      setLoading(false);
+      return;
+    }
+
+    fetchWorkoutVideoById(workoutId)
+      .then((row) => {
+        setWorkout(row?.published ? row : null);
+        setTimer(Math.max(60, (row?.duration ?? 1) * 60));
+      })
+      .catch(() => setWorkout(null))
+      .finally(() => setLoading(false));
+  }, [workoutId]);
+
+  const finishWorkout = () => {
+    if (finishedRef.current || !workout) return;
+    finishedRef.current = true;
+    const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 60000));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.replace({
+      pathname: "/(user)/workout-done",
+      params: {
+        duration: String(elapsed),
+        exercises: String(exerciseCount),
+        calories: String(workout.calories),
+        workoutId: workout.id,
+        workoutTitle: workout.title,
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (paused || loading || !workout) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
     intervalRef.current = setInterval(() => {
       setTimer((t) => {
         if (t <= 1) {
-          if (phase === "work") {
-            setPhase("rest");
-            return current?.restSeconds ?? 30;
-          } else {
-            setPhase("work");
-            return 45;
-          }
+          finishWorkout();
+          return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [paused, phase, current]);
-
-  const goNext = () => {
-    if (currentIdx < exercises.length - 1) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setCurrentIdx(currentIdx + 1);
-      setPhase("work");
-      setTimer(45);
-    } else {
-      const elapsed = Math.round((Date.now() - startTime) / 60000);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace({ pathname: "/(user)/workout-done", params: { duration: String(elapsed), exercises: String(exercises.length), calories: String(workout.calories) } });
-    }
-  };
-
-  const goPrev = () => {
-    if (currentIdx > 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setCurrentIdx(currentIdx - 1);
-      setPhase("work");
-      setTimer(45);
-    }
-  };
+  }, [paused, loading, workout]);
 
   const fmt = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+  if (!loading && !workout) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="close-outline" size={28} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Workout unavailable</Text>
+          <View style={{ width: 28 }} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -99,18 +118,18 @@ export default function ActiveWorkoutScreen() {
           <Ionicons name="close-outline" size={28} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {currentIdx + 1} / {exercises.length}
+          {loading ? "Loading" : "Workout"}
         </Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <ProgressBar progress={(currentIdx + 1) / exercises.length} style={styles.progress} />
+      <ProgressBar progress={workout ? (totalSeconds - timer) / totalSeconds : 0} style={styles.progress} />
 
       {/* Phase Label */}
       <View style={styles.phaseRow}>
-        <View style={[styles.phaseChip, { backgroundColor: phase === "work" ? colors.primaryLight : colors.muted }]}>
-          <Text style={[styles.phaseText, { color: phase === "work" ? colors.primary : colors.mutedForeground }]}>
-            {phase === "work" ? "EXERCISE" : "REST"}
+        <View style={[styles.phaseChip, { backgroundColor: colors.primaryLight }]}>
+          <Text style={[styles.phaseText, { color: colors.primary }]}>
+            WORKOUT
           </Text>
         </View>
       </View>
@@ -120,18 +139,18 @@ export default function ActiveWorkoutScreen() {
         <Animated.View style={[styles.iconCircle, { backgroundColor: colors.primaryLight, transform: [{ scale: pulseAnim }] }]}>
           <Ionicons name="barbell-outline" size={52} color={colors.primary} />
         </Animated.View>
-        <Text style={[styles.exerciseName, { color: colors.foreground }]}>{current?.name}</Text>
+        <Text style={[styles.exerciseName, { color: colors.foreground }]}>{workout?.title ?? "Loading workout"}</Text>
         <Text style={[styles.exerciseMeta, { color: colors.mutedForeground }]}>
-          {current?.sets} sets · {current?.reps} reps
+          {workout ? `${workout.category} · ${workout.difficulty} · ${exerciseCount} exercises` : "Preparing workout"}
         </Text>
 
         {/* Timer */}
-        <View style={[styles.timerRing, { borderColor: phase === "work" ? colors.primary : colors.muted }]}>
-          <Text style={[styles.timerText, { color: phase === "work" ? colors.primary : colors.mutedForeground }]}>
+        <View style={[styles.timerRing, { borderColor: colors.primary }]}>
+          <Text style={[styles.timerText, { color: colors.primary }]}>
             {fmt(timer)}
           </Text>
           <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>
-            {phase === "work" ? "exercise time" : "rest time"}
+            remaining
           </Text>
         </View>
       </View>
@@ -139,11 +158,14 @@ export default function ActiveWorkoutScreen() {
       {/* Controls */}
       <View style={[styles.controls, { paddingBottom: botPad + 20 }]}>
         <TouchableOpacity
-          onPress={goPrev}
-          disabled={currentIdx === 0}
-          style={[styles.navBtn, { backgroundColor: colors.card, opacity: currentIdx === 0 ? 0.4 : 1 }]}
+          onPress={() => {
+            setTimer(totalSeconds);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          disabled={!workout}
+          style={[styles.navBtn, { backgroundColor: colors.card, opacity: workout ? 1 : 0.4 }]}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+          <Ionicons name="refresh-outline" size={24} color={colors.foreground} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -154,10 +176,11 @@ export default function ActiveWorkoutScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={goNext}
+          onPress={finishWorkout}
+          disabled={!workout}
           style={[styles.navBtn, { backgroundColor: colors.card }]}
         >
-          <Ionicons name={currentIdx === exercises.length - 1 ? "checkmark" : "chevron-forward"} size={24} color={colors.foreground} />
+          <Ionicons name="checkmark" size={24} color={colors.foreground} />
         </TouchableOpacity>
       </View>
     </View>

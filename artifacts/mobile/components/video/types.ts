@@ -14,6 +14,8 @@ export interface AgoraCallSession {
   uid: number;
   expiresAt: string;
   participantLabel: string;
+  bookingId: string;
+  accessToken: string;
 }
 
 export interface AgoraCallViewProps {

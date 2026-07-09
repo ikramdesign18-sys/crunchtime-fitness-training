@@ -26,8 +26,8 @@ const SLIDES = [
     icon: "barbell-outline" as const,
     title: "Train Smarter",
     subtitle: "Guided workout programs for every fitness level — from beginner to elite athlete.",
-    gradient: ["#1A1A1A", "#2A1208"] as [string, string],
-    accent: "#D66433",
+    gradient: ["#1A1A1A", "#2A2410"] as [string, string],
+    accent: "#D4AF37",
   },
   {
     id: "2",
@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
   const flatRef = useRef<FlatList>(null);
   const dotAnim = useRef(new Animated.Value(0)).current;
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 20;
+  const bottomPad = Platform.OS === "web" ? 24 : Math.max(insets.bottom, 8) + 12;
 
   const goToLogin = async () => {
     await markOnboardingComplete();
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     flex: 1,
     justifyContent: "center",
-    paddingBottom: 60,
+    paddingBottom: 120,
   },
   iconCircle: {
     width: 130,
@@ -196,12 +196,12 @@ const styles = StyleSheet.create({
   skipTopText: { fontFamily: "Inter_500Medium", fontSize: 14, color: "#FFFFFF99" },
   bottom: {
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 20,
     backgroundColor: "#111111",
   },
-  dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginBottom: 28 },
+  dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginBottom: 18 },
   dot: { height: 6, borderRadius: 3 },
-  signinRow: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
+  signinRow: { flexDirection: "row", justifyContent: "center", marginTop: 14 },
   signinText: { fontFamily: "Inter_400Regular", fontSize: 14, color: "#666" },
   signinLink: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });

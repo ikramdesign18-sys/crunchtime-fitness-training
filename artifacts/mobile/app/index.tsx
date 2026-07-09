@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     overflow: "hidden",
     marginBottom: 28,
-    shadowColor: "#D66433",
+    shadowColor: "#D4AF37",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   appSub: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
-    color: "#D66433",
+    color: "#D4AF37",
     letterSpacing: 4,
     marginTop: 4,
   },

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppCard from "@/components/ui/AppCard";
 import Badge from "@/components/ui/Badge";
+import InlineVideoPlayer from "@/components/video/InlineVideoPlayer";
 import { useColors } from "@/hooks/useColors";
 import { fetchVideoById, type VideoSubmission } from "@/lib/supabaseApi";
 
@@ -37,13 +38,7 @@ export default function VideoDetailScreen() {
         <View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        {/* Video Placeholder */}
-        <View style={[styles.videoArea, { backgroundColor: "#1A1A1A", borderRadius: colors.radius }]}>
-          <View style={styles.playIcon}>
-            <Ionicons name="play-circle-outline" size={60} color="rgba(255,255,255,0.6)" />
-          </View>
-          <Text style={styles.videoLabel}>{video.exercise_name}</Text>
-        </View>
+        <InlineVideoPlayer videoUrl={video.video_url} title={video.exercise_name} style={styles.videoPlayer} />
 
         {/* Info */}
         <AppCard style={styles.infoCard}>
@@ -98,9 +93,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 },
   headerTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
-  videoArea: { height: 200, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  playIcon: {},
-  videoLabel: { color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 8 },
+  videoPlayer: { marginBottom: 16 },
   infoCard: { marginBottom: 12 },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)" },
   infoLabel: { fontFamily: "Inter_400Regular", fontSize: 14 },

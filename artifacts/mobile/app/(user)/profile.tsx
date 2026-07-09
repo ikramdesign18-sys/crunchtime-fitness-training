@@ -9,7 +9,6 @@ import AppCard from "@/components/ui/AppCard";
 import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { PROGRESS_DATA } from "@/lib/dummyData";
 import { fetchBmiRecords, type BmiRecord } from "@/lib/supabaseApi";
 
 export default function ProfileScreen() {
@@ -26,8 +25,6 @@ export default function ProfileScreen() {
       .then((records) => setLatestBmi(records[records.length - 1] ?? null))
       .catch(() => {});
   }, [user]);
-
-  const latest = PROGRESS_DATA[PROGRESS_DATA.length - 1];
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
@@ -55,7 +52,7 @@ export default function ProfileScreen() {
         {[
           { label: "Height", value: profile?.height ? `${profile.height} cm` : "—" },
           { label: "Weight", value: profile?.weight ? `${profile.weight} kg` : "—" },
-          { label: "BMI", value: latestBmi ? Number(latestBmi.bmi).toFixed(1) : String(latest.bmi) },
+          { label: "BMI", value: latestBmi ? Number(latestBmi.bmi).toFixed(1) : "—" },
         ].map((s) => (
           <AppCard key={s.label} style={styles.statCard}>
             <Text style={[styles.statValue, { color: colors.foreground }]}>{s.value}</Text>
@@ -88,13 +85,14 @@ export default function ProfileScreen() {
       <AppCard style={styles.actionsCard} padding={0}>
         {[
           { icon: "create-outline" as const, label: "Edit Profile", onPress: () => router.push("/profile-setup") },
+          { icon: "card-outline" as const, label: "Membership", onPress: () => router.push("/(user)/membership" as any) },
           { icon: "settings-outline" as const, label: "Settings", onPress: () => router.push("/(user)/settings") },
           { icon: "notifications-outline" as const, label: "Notifications", onPress: () => router.push("/(user)/notifications") },
         ].map((action, i) => (
           <TouchableOpacity
             key={action.label}
             onPress={action.onPress}
-            style={[styles.actionRow, { borderBottomColor: colors.border, borderBottomWidth: i < 2 ? 1 : 0 }]}
+            style={[styles.actionRow, { borderBottomColor: colors.border, borderBottomWidth: i < 3 ? 1 : 0 }]}
           >
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name={action.icon} size={16} color={colors.primary} />

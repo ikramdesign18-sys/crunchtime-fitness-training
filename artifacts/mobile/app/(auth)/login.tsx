@@ -67,7 +67,7 @@ export default function LoginScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={[colors.isDark ? "#2A1208" : "#FFF3EC", "transparent"]}
+        colors={[colors.isDark ? "#2A2410" : "#FFF8E1", "transparent"]}
         style={[styles.headerGradient, { height: 260 + topPadding }]}
       />
       <KeyboardAvoidingView
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#D66433",
+    shadowColor: "#D4AF37",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

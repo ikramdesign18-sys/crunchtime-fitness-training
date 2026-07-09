@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,13 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import {
   fetchNotifications,
+  getOrCreateThread,
   markAllNotificationsRead,
   markNotificationRead,
   type AppNotification,
 } from "@/lib/supabaseApi";
 
 const ICON_MAP = {
-  workout: { name: "barbell-outline" as const, color: "#D66433" },
+  workout: { name: "barbell-outline" as const, color: "#D4AF37" },
   meal: { name: "restaurant-outline" as const, color: "#22C55E" },
   booking: { name: "calendar-outline" as const, color: "#3B82F6" },
   message: { name: "chatbubbles-outline" as const, color: "#8B5CF6" },
@@ -23,6 +25,7 @@ const ICON_MAP = {
 export default function NotificationsScreen() {
   const colors = useColors();
   const { user } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -39,6 +42,51 @@ export default function NotificationsScreen() {
   };
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
+  const openNotification = async (notif: AppNotification) => {
+    setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n));
+    markNotificationRead(notif.id).catch(() => {});
+
+    if (!user) return;
+
+    if (notif.type === "message") {
+      if (notif.thread_id) {
+        router.push({
+          pathname: "/(user)/chat",
+          params: {
+            threadId: notif.thread_id,
+            trainerId: notif.sender_id ?? undefined,
+          },
+        });
+        return;
+      }
+
+      const trainerId =
+        notif.sender_id && notif.sender_id !== user.id
+          ? notif.sender_id
+          : notif.receiver_id && notif.receiver_id !== user.id
+            ? notif.receiver_id
+            : undefined;
+      const thread = await getOrCreateThread(user.id, trainerId ?? undefined);
+      router.push({
+        pathname: "/(user)/chat",
+        params: {
+          threadId: thread.id,
+          trainerId: thread.trainer_id,
+        },
+      });
+      return;
+    }
+
+    if (notif.type === "booking") {
+      router.push("/(user)/booking");
+      return;
+    }
+
+    if (notif.type === "video") {
+      router.push("/(user)/video-submit");
+    }
+  };
+
   const today = notifications.filter((n) => {
     const d = new Date(n.created_at);
     return d.toDateString() === new Date().toDateString();
@@ -51,8 +99,7 @@ export default function NotificationsScreen() {
       <TouchableOpacity
         key={notif.id}
         onPress={() => {
-          setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n));
-          markNotificationRead(notif.id).catch(() => {});
+          openNotification(notif).catch(() => {});
         }}
         style={[
           styles.notifItem,

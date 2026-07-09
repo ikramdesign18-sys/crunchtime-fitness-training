@@ -79,7 +79,7 @@ artifacts/mobile/
 
 1. Create a Supabase project.
 2. Copy the Project URL and anon public key from Project Settings > API.
-3. Add them to `artifacts/mobile/.env`:
+3. Add them to `artifacts/mobile/.env` for local mobile development:
    - `EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co`
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key`
 4. Run `supabase/schema.sql` in the Supabase SQL editor.
@@ -89,6 +89,95 @@ artifacts/mobile/
 8. Run the app.
 
 Do not add a Supabase service role key to the Expo app. Any service role usage must stay server-only.
+
+## Mobile Environment Variables
+
+The Expo mobile app expects its local env file at:
+
+```text
+artifacts/mobile/.env
+```
+
+Keep `artifacts/mobile/.env.example` as documentation only. Do not rely on the repo root `.env` for the mobile app; run Expo commands through the mobile workspace/package so the project root is `artifacts/mobile`.
+
+The app reads these public build-time variables:
+
+```sh
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_API_BASE_URL=
+EXPO_PUBLIC_AGORA_APP_ID=
+EXPO_PUBLIC_VIDEO_CALL_PROVIDER=
+```
+
+Expo substitutes `EXPO_PUBLIC_*` values into the app bundle at build time. The code must read them with dot notation, for example `process.env.EXPO_PUBLIC_SUPABASE_URL`.
+
+The app includes a safe env debug helper at `artifacts/mobile/lib/envDebug.ts`. It reports only true/false presence for the public env keys and never prints actual values. In development builds, `_layout.tsx` logs:
+
+```text
+SUPABASE_URL present: true/false
+SUPABASE_ANON_KEY present: true/false
+API_BASE_URL present: true/false
+AGORA_APP_ID present: true/false
+VIDEO_CALL_PROVIDER present: true/false
+```
+
+If Supabase keys are missing, the app error message also reports only whether each key is missing and reminds you to configure both local and EAS environments.
+
+## Environment File Ownership
+
+Keep environment variables split by runtime. Do not copy every key into every `.env` file.
+
+`artifacts/mobile/.env` is for the Expo mobile app and must contain only public mobile keys:
+
+```sh
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_API_BASE_URL=
+EXPO_PUBLIC_AGORA_APP_ID=
+EXPO_PUBLIC_VIDEO_CALL_PROVIDER=agora
+```
+
+Never put `AGORA_APP_CERTIFICATE`, `SUPABASE_SERVICE_ROLE_KEY`, or `GROQ_API_KEY` in `artifacts/mobile/.env` or any Expo/EAS public environment.
+
+`artifacts/api-server/.env` is for backend/server keys:
+
+```sh
+AGORA_APP_ID=
+AGORA_APP_CERTIFICATE=
+AGORA_TOKEN_EXPIRE_SECONDS=3600
+PORT=3001
+```
+
+Do not expose `artifacts/api-server/.env` to the mobile app.
+
+Root `.env` is optional and not required for normal local development. Use it only if a root-level script explicitly needs it, and do not put backend secrets there.
+
+## EAS Cloud Build Environment Variables
+
+For EAS cloud builds, do not assume `artifacts/mobile/.env` will be available on the remote builder. Add the same public variables in Expo/EAS Environment Variables for the same environment used by the build profile.
+
+Required for APK/profile builds:
+
+```sh
+EXPO_PUBLIC_SUPABASE_URL
+EXPO_PUBLIC_SUPABASE_ANON_KEY
+EXPO_PUBLIC_API_BASE_URL
+EXPO_PUBLIC_AGORA_APP_ID
+EXPO_PUBLIC_VIDEO_CALL_PROVIDER
+```
+
+`artifacts/mobile/eas.json` maps:
+
+```text
+development profile -> development environment
+preview profile     -> preview environment
+production profile  -> production environment
+```
+
+So before running `eas build --platform android --profile preview`, add the keys to the EAS `preview` environment. Before running `eas build --platform android --profile production`, add them to the EAS `production` environment.
+
+These `EXPO_PUBLIC_*` values are bundled into the client app and should be treated as public. Do not put server-only secrets in them.
 
 ## Video Call Setup
 

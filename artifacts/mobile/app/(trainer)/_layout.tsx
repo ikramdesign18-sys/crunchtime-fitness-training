@@ -98,10 +98,14 @@ export default function TrainerTabLayout() {
         }}
       />
       <Tabs.Screen name="client-detail" options={{ href: null }} />
-      <Tabs.Screen name="chat-detail" options={{ href: null }} />
+      <Tabs.Screen name="chat-detail" options={{ href: null, tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="video-call" options={{ href: null, tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="videos" options={{ href: null }} />
       <Tabs.Screen name="video-review" options={{ href: null }} />
+      <Tabs.Screen name="workout-upload" options={{ href: null, tabBarStyle: { display: "none" } }} />
+      <Tabs.Screen name="workout-management" options={{ href: null }} />
+      <Tabs.Screen name="meal-plans" options={{ href: null }} />
+      <Tabs.Screen name="meal-plan-editor" options={{ href: null, tabBarStyle: { display: "none" } }} />
     </Tabs>
   );
 }

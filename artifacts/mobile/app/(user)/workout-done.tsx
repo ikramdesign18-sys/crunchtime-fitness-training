@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,9 +16,16 @@ export default function WorkoutDoneScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { duration, exercises, calories } = useLocalSearchParams<{ duration: string; exercises: string; calories: string }>();
+  const { duration, exercises, calories, workoutId, workoutTitle } = useLocalSearchParams<{
+    duration: string;
+    exercises: string;
+    calories: string;
+    workoutId?: string;
+    workoutTitle?: string;
+  }>();
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const savedRef = useRef(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -30,20 +37,27 @@ export default function WorkoutDoneScreen() {
     ]).start();
   }, []);
 
-  const handleSave = async () => {
-    if (user) {
+  const saveProgress = useCallback(async () => {
+    if (savedRef.current) return;
+    savedRef.current = true;
+    if (user && workoutId && workoutTitle) {
       try {
         await saveWorkoutProgress({
           user_id: user.id,
-          workout_id: "local-workout",
-          workout_title: "Completed Workout",
+          workout_id: workoutId,
+          workout_title: workoutTitle,
           duration_minutes: Number(duration ?? 0),
           calories_burned: Number(calories ?? 0),
         });
       } catch (error) {
+        savedRef.current = false;
         console.warn("Workout progress save failed", (error as Error).message);
       }
     }
+  }, [calories, duration, user, workoutId, workoutTitle]);
+
+  const handleSave = async () => {
+    await saveProgress();
     router.replace("/(user)/home");
   };
 
@@ -76,7 +90,7 @@ export default function WorkoutDoneScreen() {
 
         <View style={[styles.btnGroup, { paddingBottom: botPad + 20 }]}>
           <AppButton title="Save Progress" onPress={handleSave} />
-          <AppButton title="Back to Home" onPress={() => router.replace("/(user)/home")} variant="outline" style={{ marginTop: 10 }} />
+          <AppButton title="Back to Home" onPress={handleSave} variant="outline" style={{ marginTop: 10 }} />
         </View>
       </Animated.View>
     </View>

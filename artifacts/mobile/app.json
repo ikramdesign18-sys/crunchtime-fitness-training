@@ -29,8 +29,8 @@
         "MODIFY_AUDIO_SETTINGS"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#D66433"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#D4AF37"
       }
     },
     "web": {
@@ -45,7 +45,8 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

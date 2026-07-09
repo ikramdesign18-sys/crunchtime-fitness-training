@@ -3,10 +3,10 @@ import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
-import app from "./app";
-import { logger } from "./lib/logger";
+const { default: app } = await import("./app");
+const { logger } = await import("./lib/logger");
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env.PORT;
 
 if (!rawPort) {
   throw new Error(

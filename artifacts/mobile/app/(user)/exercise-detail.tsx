@@ -1,81 +1,102 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppCard from "@/components/ui/AppCard";
 import { useColors } from "@/hooks/useColors";
-import { WORKOUTS } from "@/lib/dummyData";
+import { fetchWorkoutVideoById, type TrainerWorkoutVideo } from "@/lib/supabaseApi";
 
 export default function ExerciseDetailScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { exerciseId, workoutId } = useLocalSearchParams<{ exerciseId: string; workoutId: string }>();
+  const { workoutId } = useLocalSearchParams<{ exerciseId: string; workoutId: string }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [workout, setWorkout] = useState<TrainerWorkoutVideo | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const workout = WORKOUTS.find((w) => w.id === workoutId) ?? WORKOUTS[0];
-  const exercise = workout.exercises.find((e) => e.id === exerciseId) ?? workout.exercises[0];
+  useEffect(() => {
+    if (!workoutId) {
+      setLoading(false);
+      return;
+    }
+    fetchWorkoutVideoById(workoutId)
+      .then((row) => setWorkout(row?.published ? row : null))
+      .catch(() => setWorkout(null))
+      .finally(() => setLoading(false));
+  }, [workoutId]);
+
+  const hasInstructions = !!workout?.instructions?.trim();
+  const hasTips = !!workout?.tips?.trim();
+  const hasCommonMistakes = !!workout?.common_mistakes?.trim();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        <LinearGradient colors={["#1A1A1A", "#2A1208"]} style={[styles.hero, { paddingTop: topPad + 16 }]}>
+        <LinearGradient colors={["#1A1A1A", "#2A2410"]} style={[styles.hero, { paddingTop: topPad + 16 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color="#FFF" />
           </TouchableOpacity>
           <View style={styles.heroCenter}>
             <View style={styles.heroIcon}>
-              <Ionicons name="barbell-outline" size={52} color="#D66433" />
+              <Ionicons name="barbell-outline" size={52} color="#D4AF37" />
             </View>
-            <Text style={styles.heroTitle}>{exercise.name}</Text>
+            <Text style={styles.heroTitle}>{workout?.title ?? (loading ? "Loading workout" : "Workout unavailable")}</Text>
           </View>
         </LinearGradient>
 
-        <View style={[styles.statsBar, { backgroundColor: colors.card }]}>
-          {[
-            { label: "Sets", value: String(exercise.sets) },
-            { label: "Reps", value: String(exercise.reps) },
-            { label: "Rest", value: `${exercise.restSeconds}s` },
-          ].map((s) => (
-            <View key={s.label} style={[styles.statItem, { borderRightColor: colors.border }]}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>{s.value}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+        {workout ? (
+          <View style={[styles.statsBar, { backgroundColor: colors.card }]}>
+            {[
+              { label: "Duration", value: `${workout.duration}m` },
+              { label: "Calories", value: String(workout.calories) },
+              { label: "Exercises", value: String(workout.exercises) },
+            ].map((s) => (
+              <View key={s.label} style={[styles.statItem, { borderRightColor: colors.border }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{s.value}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.body}>
-          <AppCard style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="list-outline" size={18} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Instructions</Text>
-            </View>
-            <Text style={[styles.sectionText, { color: colors.foreground }]}>
-              1. Set up with the appropriate weight and get into the starting position.{"\n"}
-              2. Perform the movement with controlled form throughout the range of motion.{"\n"}
-              3. Complete all reps, rest for the designated time, then repeat for all sets.{"\n"}
-              4. Focus on the target muscle group and maintain tension throughout.
-            </Text>
-          </AppCard>
+          {hasInstructions ? (
+            <AppCard style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="list-outline" size={18} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Instructions</Text>
+              </View>
+              <Text style={[styles.sectionText, { color: colors.foreground }]}>{workout?.instructions}</Text>
+            </AppCard>
+          ) : null}
 
-          <AppCard style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bulb-outline" size={18} color="#F59E0B" />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tips</Text>
-            </View>
-            <Text style={[styles.sectionText, { color: colors.foreground }]}>{exercise.tips}</Text>
-          </AppCard>
+          {hasTips ? (
+            <AppCard style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="bulb-outline" size={18} color="#F59E0B" />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tips</Text>
+              </View>
+              <Text style={[styles.sectionText, { color: colors.foreground }]}>{workout?.tips}</Text>
+            </AppCard>
+          ) : null}
 
-          <AppCard style={[styles.section, { borderLeftWidth: 3, borderLeftColor: colors.destructive }]}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="warning-outline" size={18} color={colors.destructive} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Common Mistakes</Text>
-            </View>
-            <Text style={[styles.sectionText, { color: colors.foreground }]}>{exercise.commonMistakes}</Text>
-          </AppCard>
+          {hasCommonMistakes ? (
+            <AppCard style={[styles.section, { borderLeftWidth: 3, borderLeftColor: colors.destructive }]}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="warning-outline" size={18} color={colors.destructive} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Common Mistakes</Text>
+              </View>
+              <Text style={[styles.sectionText, { color: colors.foreground }]}>{workout?.common_mistakes}</Text>
+            </AppCard>
+          ) : null}
+
+          {!loading && workout && !hasInstructions && !hasTips && !hasCommonMistakes ? (
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No trainer notes are available for this workout.</Text>
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -98,4 +119,5 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   sectionText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22, opacity: 0.85 },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center" },
 });

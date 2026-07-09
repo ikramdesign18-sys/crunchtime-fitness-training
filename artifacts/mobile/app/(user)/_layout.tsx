@@ -106,8 +106,9 @@ export default function UserTabLayout() {
       <Tabs.Screen name="exercise-detail" options={{ href: null }} />
       <Tabs.Screen name="bmi" options={{ href: null }} />
       <Tabs.Screen name="meal-detail" options={{ href: null }} />
-      <Tabs.Screen name="chat" options={{ href: null }} />
+      <Tabs.Screen name="chat" options={{ href: null, tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="booking" options={{ href: null }} />
+      <Tabs.Screen name="membership" options={{ href: null }} />
       <Tabs.Screen name="video-submit" options={{ href: null }} />
       <Tabs.Screen name="video-detail" options={{ href: null }} />
       <Tabs.Screen name="video-call" options={{ href: null, tabBarStyle: { display: "none" } }} />

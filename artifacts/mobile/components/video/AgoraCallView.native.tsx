@@ -39,14 +39,19 @@ async function requestMediaPermissions() {
 export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCallViewProps) {
   const engineRef = useRef<IRtcEngine | null>(null);
   const eventHandlerRef = useRef<IRtcEngineEventHandler | null>(null);
+  const endedRef = useRef(false);
   const [localJoined, setLocalJoined] = useState(false);
   const [remoteUsers, setRemoteUsers] = useState<number[]>([]);
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [frontCamera, setFrontCamera] = useState(true);
-  const [statusText, setStatusText] = useState("Connecting...");
+  const [speakerOn, setSpeakerOn] = useState(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [statusText, setStatusText] = useState("Preparing call...");
 
   const endCall = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
     const engine = engineRef.current;
     if (engine) {
       engine.leaveChannel();
@@ -65,10 +70,18 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
   }, [onEnd, onStateChange]);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedSeconds((value) => value + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
     async function startCall() {
-      onStateChange("connecting", "Connecting to Agora...");
+      onStateChange("connecting", "Connecting...");
       setStatusText("Connecting...");
 
       const permissionsGranted = await requestMediaPermissions();
@@ -85,6 +98,8 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
         appId: session.appId,
         channelProfile: ChannelProfileType.ChannelProfileCommunication,
       });
+      engine.setDefaultAudioRouteToSpeakerphone(true);
+      engine.setEnableSpeakerphone(true);
 
       const eventHandler: IRtcEngineEventHandler = {
         onJoinChannelSuccess: () => {
@@ -113,24 +128,42 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
         },
         onError: (err, msg) => {
           if (!mounted) return;
-          const message = msg || `Agora error ${err}`;
+          const message = msg || `Video call error ${err}`;
           setStatusText(message);
           onStateChange("token-error", message);
         },
-        onTokenPrivilegeWillExpire: async () => {
+        onRequestToken: async () => {
           const currentEngine = engineRef.current;
           if (!currentEngine) return;
           try {
             const nextToken = await requestAgoraToken({
-              channelName: session.channelName,
-              uid: session.uid,
+              bookingId: session.bookingId,
               role: "publisher",
+              accessToken: session.accessToken,
             });
             currentEngine.renewToken(nextToken.token);
           } catch (error) {
             onStateChange(
               "token-error",
               (error as Error).message || "Could not renew the Agora token.",
+            );
+          }
+        },
+        onTokenPrivilegeWillExpire: async () => {
+          const currentEngine = engineRef.current;
+          if (!currentEngine) return;
+          try {
+            const nextToken = await requestAgoraToken({
+              bookingId: session.bookingId,
+              role: "publisher",
+              accessToken: session.accessToken,
+            });
+            currentEngine.renewToken(nextToken.token);
+          } catch (error) {
+            setStatusText("Your call session expired.");
+            onStateChange(
+              "token-error",
+              (error as Error).message || "Could not renew the video call session.",
             );
           }
         },
@@ -150,8 +183,8 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
       });
 
       if (joinResult < 0) {
-        setStatusText(`Could not join Agora channel (${joinResult}).`);
-        onStateChange("token-error", `Could not join Agora channel (${joinResult}).`);
+        setStatusText("Could not join video call.");
+        onStateChange("token-error", "Could not join video call.");
       }
     }
 
@@ -176,7 +209,7 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
         engineRef.current = null;
       }
     };
-  }, [onStateChange, session.appId, session.channelName, session.token, session.uid]);
+  }, [onStateChange, session.accessToken, session.appId, session.bookingId, session.channelName, session.token, session.uid]);
 
   const toggleMute = () => {
     const next = !muted;
@@ -196,6 +229,18 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
     setFrontCamera((current) => !current);
   };
 
+  const toggleSpeaker = () => {
+    const next = !speakerOn;
+    engineRef.current?.setEnableSpeakerphone(next);
+    setSpeakerOn(next);
+  };
+
+  const formatElapsed = (seconds: number) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const secs = (seconds % 60).toString().padStart(2, "0");
+    return `${mins}:${secs}`;
+  };
+
   const primaryRemoteUid = remoteUsers[0];
 
   return (
@@ -213,7 +258,7 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
           <View style={styles.waiting}>
             <Ionicons name="person-circle-outline" size={88} color="rgba(255,255,255,0.26)" />
             <Text style={styles.waitingTitle}>Waiting for {session.participantLabel}</Text>
-            <Text style={styles.waitingText}>Both people must join {session.channelName}</Text>
+            <Text style={styles.waitingText}>The call will connect when both people join.</Text>
           </View>
         )}
       </View>
@@ -221,6 +266,7 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
       <View style={styles.statusPill}>
         <View style={[styles.statusDot, { backgroundColor: remoteUsers.length ? "#22C55E" : "#F59E0B" }]} />
         <Text style={styles.statusText}>{statusText}</Text>
+        <Text style={styles.timerText}>{formatElapsed(elapsedSeconds)}</Text>
       </View>
 
       <View style={styles.localPreview}>
@@ -262,6 +308,13 @@ export default function AgoraCallView({ session, onEnd, onStateChange }: AgoraCa
           style={styles.controlButton}
         >
           <Ionicons name="camera-reverse-outline" size={22} color="#FFF" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityLabel={speakerOn ? "Turn speaker off" : "Turn speaker on"}
+          onPress={toggleSpeaker}
+          style={[styles.controlButton, speakerOn && styles.activeControl]}
+        >
+          <Ionicons name={speakerOn ? "volume-high-outline" : "volume-mute-outline"} size={22} color="#FFF" />
         </TouchableOpacity>
         <TouchableOpacity accessibilityLabel="End call" onPress={endCall} style={styles.endButton}>
           <Ionicons name="call" size={28} color="#FFF" style={styles.endIcon} />
@@ -309,6 +362,7 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  timerText: { color: "rgba(255,255,255,0.76)", fontFamily: "Inter_600SemiBold", fontSize: 12 },
   localPreview: {
     position: "absolute",
     right: 16,
@@ -330,24 +384,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: 10,
     paddingTop: 18,
     paddingBottom: 32,
     backgroundColor: "rgba(0,0,0,0.62)",
   },
   controlButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.16)",
   },
+  activeControl: { backgroundColor: "rgba(212,175,55,0.72)" },
   activeDanger: { backgroundColor: "#EF4444" },
   endButton: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EF4444",

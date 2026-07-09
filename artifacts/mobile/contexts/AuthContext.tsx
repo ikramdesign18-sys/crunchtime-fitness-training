@@ -16,6 +16,7 @@ import {
   type UserRole,
 } from "@/lib/supabaseApi";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { getSupabaseMissingConfigMessage } from "@/lib/envDebug";
 
 export interface AppUser {
   id: string;
@@ -97,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function restoreSession() {
       if (!isSupabaseConfigured) {
-        setAuthError("Supabase is not configured.");
+        setAuthError(getSupabaseMissingConfigMessage());
         setIsLoading(false);
         return;
       }
@@ -136,9 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     try {
       if (!isSupabaseConfigured) {
-        throw new Error(
-          "Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to your .env file."
-        );
+        throw new Error(getSupabaseMissingConfigMessage());
       }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -160,9 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     try {
       if (!isSupabaseConfigured) {
-        throw new Error(
-          "Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to your .env file."
-        );
+        throw new Error(getSupabaseMissingConfigMessage());
       }
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -189,9 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     try {
       if (!isSupabaseConfigured) {
-        throw new Error(
-          "Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to your .env file."
-        );
+        throw new Error(getSupabaseMissingConfigMessage());
       }
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;

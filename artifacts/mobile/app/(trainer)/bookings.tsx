@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,6 +10,8 @@ import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { markBookingPaymentStatus } from "@/lib/paymentApi";
+import { formatPrice } from "@/lib/paymentConfig";
 import {
   fetchTrainerBookings,
   updateBookingStatus,
@@ -20,13 +23,40 @@ const FILTERS: Filter[] = ["All", "pending", "accepted", "declined"];
 const STATUS_LABEL = { pending: "Pending", accepted: "Accepted", declined: "Declined" };
 const STATUS_COLOR = { pending: "warning", accepted: "success", declined: "error" } as const;
 
+function isCallReadyPaymentStatus(status: Booking["payment_status"]) {
+  return status === "paid" || status === "free_promo" || status === "waived";
+}
+
+function canMarkFreePromo(booking: Booking) {
+  return (
+    booking.status !== "declined" &&
+    (booking.payment_status === "unpaid" ||
+      booking.payment_status === "pending" ||
+      booking.payment_status === "failed" ||
+      !booking.payment_status)
+  );
+}
+
+function getBookingPaymentLabel(booking: Booking) {
+  if (booking.payment_status === "free_promo") return "Free Promo Booking";
+  if (booking.payment_status === "waived") return "Payment Waived";
+  if (booking.payment_status === "paid") {
+    return `Paid${booking.amount_paid ? ` · ${formatPrice(booking.amount_paid)}` : ""}`;
+  }
+  if (booking.payment_status === "failed") return "Payment Failed";
+  if (booking.payment_status === "refunded") return "Refunded";
+  return "Unpaid";
+}
+
 export default function BookingsScreen() {
   const colors = useColors();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, session } = useAuth();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [filter, setFilter] = useState<Filter>("All");
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [markingFreeId, setMarkingFreeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +72,28 @@ export default function BookingsScreen() {
       await updateBookingStatus(booking, status);
     } catch {
       fetchTrainerBookings(booking.trainer_id).then(setBookings).catch(() => {});
+    }
+  };
+
+  const markFreePromo = async (booking: Booking) => {
+    if (!session?.access_token) {
+      Alert.alert("Sign In Required", "Please sign in again before marking a booking free.");
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setMarkingFreeId(booking.id);
+    try {
+      await markBookingPaymentStatus({
+        accessToken: session.access_token,
+        bookingId: booking.id,
+        paymentStatus: "free_promo",
+      });
+      fetchTrainerBookings(booking.trainer_id).then(setBookings).catch(() => {});
+    } catch (error) {
+      Alert.alert("Could Not Mark Free", (error as Error).message);
+    } finally {
+      setMarkingFreeId(null);
     }
   };
 
@@ -89,6 +141,14 @@ export default function BookingsScreen() {
                   <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{booking.session_time}</Text>
                 </View>
+                {booking.payment_status ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="card-outline" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      {getBookingPaymentLabel(booking)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               {booking.note ? (
                 <Text style={[styles.note, { color: colors.mutedForeground }]}>{booking.note}</Text>
@@ -102,15 +162,56 @@ export default function BookingsScreen() {
                     <Ionicons name="close-outline" size={18} color="#EF4444" />
                     <Text style={[styles.actionText, { color: "#EF4444" }]}>Decline</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => updateStatus(booking, "accepted")}
-                    style={[styles.actionBtn, { backgroundColor: "#DCFCE7", borderRadius: colors.radius, flex: 1.5 }]}
-                  >
-                    <Ionicons name="checkmark-outline" size={18} color="#16A34A" />
-                    <Text style={[styles.actionText, { color: "#16A34A" }]}>Accept</Text>
-                  </TouchableOpacity>
+                  {canMarkFreePromo(booking) ? (
+                    <TouchableOpacity
+                      onPress={() => markFreePromo(booking)}
+                      disabled={markingFreeId === booking.id}
+                      style={[styles.actionBtn, { backgroundColor: colors.primaryLight, borderRadius: colors.radius, flex: 1.3 }]}
+                    >
+                      <Ionicons name="gift-outline" size={18} color={colors.primary} />
+                      <Text style={[styles.actionText, { color: colors.primary }]}>
+                        {markingFreeId === booking.id ? "Marking" : "Mark Free"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {isCallReadyPaymentStatus(booking.payment_status) ? (
+                    <TouchableOpacity
+                      onPress={() => updateStatus(booking, "accepted")}
+                      style={[styles.actionBtn, { backgroundColor: "#DCFCE7", borderRadius: colors.radius, flex: 1.5 }]}
+                    >
+                      <Ionicons name="checkmark-outline" size={18} color="#16A34A" />
+                      <Text style={[styles.actionText, { color: "#16A34A" }]}>Accept</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               )}
+              {booking.status !== "pending" && canMarkFreePromo(booking) ? (
+                <TouchableOpacity
+                  onPress={() => markFreePromo(booking)}
+                  disabled={markingFreeId === booking.id}
+                  style={[styles.joinButton, { backgroundColor: colors.primaryLight, borderRadius: colors.radius }]}
+                >
+                  <Ionicons name="gift-outline" size={17} color={colors.primary} />
+                  <Text style={[styles.joinText, { color: colors.primary }]}>
+                    {markingFreeId === booking.id ? "Marking Free" : "Mark Free Promo"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {booking.status === "accepted" && isCallReadyPaymentStatus(booking.payment_status) ? (
+                <TouchableOpacity
+                  onPress={() => router.push({
+                    pathname: "/(trainer)/video-call" as never,
+                    params: {
+                      bookingId: booking.id,
+                      clientName: booking.clientName ?? "Client",
+                    },
+                  })}
+                  style={[styles.joinButton, { backgroundColor: colors.primaryLight, borderRadius: colors.radius }]}
+                >
+                  <Ionicons name="videocam-outline" size={17} color={colors.primary} />
+                  <Text style={[styles.joinText, { color: colors.primary }]}>Join Video Call</Text>
+                </TouchableOpacity>
+              ) : null}
             </AppCard>
           ))
         )}
@@ -139,6 +240,8 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, gap: 4 },
   actionText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  joinButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, paddingVertical: 10 },
+  joinText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontFamily: "Inter_500Medium", fontSize: 15 },
 });

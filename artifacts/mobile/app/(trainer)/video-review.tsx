@@ -9,6 +9,7 @@ import AppInput from "@/components/ui/AppInput";
 import AppCard from "@/components/ui/AppCard";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
+import InlineVideoPlayer from "@/components/video/InlineVideoPlayer";
 import { useColors } from "@/hooks/useColors";
 import {
   fetchVideoById,
@@ -100,12 +101,7 @@ export default function VideoReviewScreen() {
           </View>
         </AppCard>
 
-        {/* Video Placeholder */}
-        <View style={[styles.videoPlayer, { backgroundColor: "#1A1A1A", borderRadius: colors.radius }]}>
-          <Ionicons name="play-circle-outline" size={60} color="rgba(255,255,255,0.5)" />
-          <Text style={styles.videoPlayerText}>{video.exercise_name}</Text>
-          <Text style={styles.videoPlayerSub}>{video.video_url}</Text>
-        </View>
+        <InlineVideoPlayer videoUrl={video.video_url} title={video.exercise_name} style={styles.videoPlayer} />
 
         {/* Client Note */}
         <AppCard style={styles.noteCard}>
@@ -164,9 +160,7 @@ const styles = StyleSheet.create({
   clientName: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   exerciseName: { fontFamily: "Inter_500Medium", fontSize: 13, marginTop: 2 },
   dateText: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
-  videoPlayer: { height: 200, alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 8 },
-  videoPlayerText: { color: "rgba(255,255,255,0.7)", fontFamily: "Inter_600SemiBold", fontSize: 15 },
-  videoPlayerSub: { color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", fontSize: 12 },
+  videoPlayer: { marginBottom: 14 },
   noteCard: { marginBottom: 16 },
   noteHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
   noteLabel: { fontFamily: "Inter_500Medium", fontSize: 12 },

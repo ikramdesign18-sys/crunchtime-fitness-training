@@ -1,27 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AgoraCallView from "@/components/video/AgoraCallView";
 import type { AgoraCallSession, AgoraCallState } from "@/components/video/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { findTrainerProfile } from "@/lib/supabaseApi";
 import {
+  getApiBaseUrlErrorMessage,
+  getVideoCallSetupMessage,
   isVideoCallConfigured,
   requestAgoraToken,
-  VIDEO_CALL_PROVIDER,
   videoCallSetupMessage,
 } from "@/lib/videoCallConfig";
-
-function uidFromUserId(userId: string) {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i += 1) {
-    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
-  }
-  return Math.max(1, hash);
-}
 
 function asParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -31,105 +23,107 @@ function asParam(value: string | string[] | undefined) {
 export default function VideoCallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, session: authSession } = useAuth();
   const params = useLocalSearchParams<{
     bookingId?: string;
-    clientId?: string;
     clientName?: string;
-    trainerId?: string;
     trainerName?: string;
   }>();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const [session, setSession] = useState<AgoraCallSession | null>(null);
+  const [callSession, setCallSession] = useState<AgoraCallSession | null>(null);
   const [state, setState] = useState<AgoraCallState>("connecting");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Preparing call...");
   const [connecting, setConnecting] = useState(false);
+  const autoStartedRef = useRef(false);
 
   const updateState = useCallback((nextState: AgoraCallState, nextMessage?: string) => {
     setState(nextState);
     if (nextMessage) setMessage(nextMessage);
+    if (nextState === "token-error") {
+      setCallSession(null);
+      setConnecting(false);
+    }
   }, []);
 
-  const resolveChannel = async () => {
+  const resolveBooking = () => {
     if (!user) throw new Error("Please sign in before starting a video call.");
 
     const bookingId = asParam(params.bookingId).trim();
-    if (bookingId) {
-      return {
-        channelName: `booking-${bookingId}`,
-        participantLabel: asParam(params.clientName) || asParam(params.trainerName) || "the other person",
-      };
+    if (!bookingId) {
+      throw new Error("Open an accepted booking to join a video call.");
     }
 
-    if (user.role === "trainer" || user.role === "admin") {
-      const clientId = asParam(params.clientId).trim();
-      if (!clientId) {
-        throw new Error("Open a client chat or booking first so the trainer joins the same call channel.");
-      }
-      return {
-        channelName: `call-${clientId}-${user.id}`,
-        participantLabel: asParam(params.clientName) || "client",
-      };
-    }
-
-    const trainerId = asParam(params.trainerId).trim();
-    if (trainerId) {
-      return {
-        channelName: `call-${user.id}-${trainerId}`,
-        participantLabel: asParam(params.trainerName) || "trainer",
-      };
-    }
-
-    const trainer = await findTrainerProfile();
     return {
-      channelName: `call-${user.id}-${trainer.id}`,
-      participantLabel: trainer.full_name || "trainer",
+      bookingId,
+      participantLabel: asParam(params.clientName) || asParam(params.trainerName) || "the other person",
     };
   };
 
-  const startCall = async () => {
+  const startCall = useCallback(async () => {
     if (!user) {
       setState("setup-missing");
       setMessage("Please sign in before starting a video call.");
       return;
     }
 
-    if (!isVideoCallConfigured) {
+    if (!authSession?.access_token) {
       setState("setup-missing");
-      setMessage(videoCallSetupMessage);
+      setMessage("Please sign in again before starting a video call.");
+      return;
+    }
+
+    const apiBaseUrlError = getApiBaseUrlErrorMessage();
+    if (apiBaseUrlError) {
+      setState("setup-missing");
+      setMessage(apiBaseUrlError);
+      return;
+    }
+
+    const videoCallSetupError = getVideoCallSetupMessage();
+    if (videoCallSetupError) {
+      setState("setup-missing");
+      setMessage(videoCallSetupError);
       return;
     }
 
     setConnecting(true);
     setState("connecting");
-    setMessage("Requesting secure Agora token...");
+    setMessage("Preparing call...");
 
     try {
-      const target = await resolveChannel();
+      const target = resolveBooking();
       const tokenData = await requestAgoraToken({
-        channelName: target.channelName,
-        uid: uidFromUserId(user.id),
+        bookingId: target.bookingId,
         role: "publisher",
+        accessToken: authSession.access_token,
       });
-      setSession({
+      setCallSession({
         ...tokenData,
         participantLabel: target.participantLabel,
+        bookingId: target.bookingId,
+        accessToken: authSession.access_token,
       });
-      setMessage("Token ready. Joining call...");
+      setMessage("Connecting...");
     } catch (error) {
       setState("token-error");
       setMessage((error as Error).message || "Could not start the video call.");
     } finally {
       setConnecting(false);
     }
-  };
+  }, [authSession?.access_token, params.bookingId, params.clientName, params.trainerName, user]);
 
-  if (session) {
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    startCall();
+  }, [startCall]);
+
+  if (callSession) {
     return (
       <AgoraCallView
-        session={session}
+        session={callSession}
         onEnd={() => {
-          setSession(null);
+          setCallSession(null);
           router.back();
         }}
         onStateChange={updateState}
@@ -138,10 +132,14 @@ export default function VideoCallScreen() {
   }
 
   const canStart = isVideoCallConfigured && !connecting;
+  const apiBaseUrlError = getApiBaseUrlErrorMessage();
+  const videoCallSetupError = getVideoCallSetupMessage();
   const setupText =
-    state === "setup-missing" || !isVideoCallConfigured
+    apiBaseUrlError ||
+    videoCallSetupError ||
+    (state === "setup-missing" || !isVideoCallConfigured
       ? videoCallSetupMessage
-      : message || "Start a secure Agora video call.";
+      : message || "Start a secure Agora video call.");
 
   return (
     <View style={styles.container}>
@@ -155,14 +153,6 @@ export default function VideoCallScreen() {
         </View>
         <Text style={styles.title}>Video Call</Text>
         <Text style={styles.subtitle}>{setupText}</Text>
-        <View style={styles.metaPanel}>
-          <Text style={styles.metaLabel}>Provider</Text>
-          <Text style={styles.metaValue}>{VIDEO_CALL_PROVIDER || "Not configured"}</Text>
-          <Text style={styles.metaLabel}>Channel</Text>
-          <Text style={styles.metaValue}>
-            Direct calls use call-user-trainer. Booking calls use booking-bookingId.
-          </Text>
-        </View>
         {message ? <Text style={styles.errorText}>{message}</Text> : null}
       </View>
 
@@ -173,7 +163,7 @@ export default function VideoCallScreen() {
           style={[styles.startButton, { opacity: canStart ? 1 : 0.5 }]}
         >
           <Ionicons name={connecting ? "hourglass-outline" : "call-outline"} size={24} color="#FFF" />
-          <Text style={styles.startText}>{connecting ? "Connecting" : "Start Call"}</Text>
+          <Text style={styles.startText}>{connecting ? "Connecting" : "Retry Call"}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -205,7 +195,7 @@ const styles = StyleSheet.create({
     borderRadius: 43,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#D66433",
+    backgroundColor: "#D4AF37",
   },
   title: {
     color: "#FFF",
@@ -220,28 +210,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 10,
     textAlign: "center",
-  },
-  metaPanel: {
-    width: "100%",
-    maxWidth: 360,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    padding: 14,
-    marginTop: 22,
-    gap: 5,
-  },
-  metaLabel: {
-    color: "rgba(255,255,255,0.48)",
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 11,
-    textTransform: "uppercase",
-  },
-  metaValue: {
-    color: "rgba(255,255,255,0.86)",
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 6,
   },
   errorText: {
     color: "#FCA5A5",

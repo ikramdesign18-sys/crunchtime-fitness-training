@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { Image } from "expo-image";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -14,7 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Badge from "@/components/ui/Badge";
 import { useColors } from "@/hooks/useColors";
-import { WORKOUTS } from "@/lib/dummyData";
+import { fetchPublishedWorkoutVideos } from "@/lib/supabaseApi";
+import { type CatalogWorkout, workoutVideoToCatalogWorkout } from "@/lib/workoutCatalog";
 
 const CATEGORIES = [
   { label: "All", icon: "grid-outline" as const },
@@ -30,6 +32,28 @@ const CATEGORIES = [
 
 const DIFF_COLOR = { Beginner: "success", Intermediate: "warning", Advanced: "error" } as const;
 
+function WorkoutThumbnail({ uri }: { uri?: string | null }) {
+  const colors = useColors();
+  const [failed, setFailed] = useState(false);
+
+  if (!uri || failed) {
+    return (
+      <View style={[styles.workoutIcon, { backgroundColor: colors.primaryLight }]}>
+        <Ionicons name="barbell-outline" size={24} color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={[styles.workoutThumb, { borderRadius: colors.radius }]}
+      contentFit="cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function WorkoutsScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -37,8 +61,15 @@ export default function WorkoutsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [workouts, setWorkouts] = useState<CatalogWorkout[]>([]);
 
-  const filtered = WORKOUTS.filter((w) => {
+  useEffect(() => {
+    fetchPublishedWorkoutVideos()
+      .then((rows) => setWorkouts(rows.map(workoutVideoToCatalogWorkout)))
+      .catch(() => setWorkouts([]));
+  }, []);
+
+  const filtered = workouts.filter((w) => {
     const matchSearch = w.title.toLowerCase().includes(search.toLowerCase());
     const matchCat = activeCategory === "All" || w.category === activeCategory;
     return matchSearch && matchCat;
@@ -105,20 +136,21 @@ export default function WorkoutsScreen() {
                 },
               ]}
             >
-              <View style={[styles.workoutIcon, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="barbell-outline" size={24} color={colors.primary} />
-              </View>
+              <WorkoutThumbnail uri={workout.thumbnailUrl} />
               <View style={styles.workoutInfo}>
                 <Text style={[styles.workoutName, { color: colors.foreground }]}>{workout.title}</Text>
                 <View style={styles.workoutMeta}>
                   <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{workout.duration}m</Text>
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>·</Text>
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{workout.exercises.length} exercises</Text>
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{workout.exerciseCount} exercises</Text>
                 </View>
                 <View style={styles.badgeRow}>
                   <Badge label={workout.difficulty} color={DIFF_COLOR[workout.difficulty]} small />
                   <Badge label={workout.category} color="muted" small style={{ marginLeft: 6 }} />
+                  {workout.isPaid ? (
+                    <Badge label="Paid" color="warning" small style={{ marginLeft: 6 }} />
+                  ) : null}
                 </View>
               </View>
               <View style={styles.calBox}>
@@ -145,6 +177,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingTop: 12, gap: 10 },
   workoutItem: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
   workoutIcon: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  workoutThumb: { width: 52, height: 52 },
   workoutInfo: { flex: 1 },
   workoutName: { fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: 4 },
   workoutMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 },

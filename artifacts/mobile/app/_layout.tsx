@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { formatSafeEnvDebugStatus } from "@/lib/envDebug";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,6 +48,12 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.info(`[env-debug]\n${formatSafeEnvDebugStatus()}`);
+    }
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

@@ -74,6 +74,7 @@ export default function ProfileSetupScreen() {
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 24 : Math.max(insets.bottom, 8) + 12;
   const progress = (step + 1) / TOTAL_STEPS;
 
   const toggleTraining = (t: string) => {
@@ -155,7 +156,7 @@ export default function ProfileSetupScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: 100 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 82 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -374,7 +375,7 @@ export default function ProfileSetupScreen() {
           {
             backgroundColor: colors.background,
             borderTopColor: colors.border,
-            paddingBottom: Platform.OS === "web" ? 24 : insets.bottom + 16,
+            paddingBottom: bottomPad,
           },
         ]}
       >
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
   completeNoteText: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
   bottomBar: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
   },
 });

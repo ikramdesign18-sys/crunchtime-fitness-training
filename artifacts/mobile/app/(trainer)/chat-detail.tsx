@@ -90,14 +90,7 @@ export default function ChatDetailScreen() {
         <Text style={[styles.clientName, { color: colors.foreground }]}>{clientName ?? "Client"}</Text>
         <TouchableOpacity
           onPress={() => {
-            if (!clientId) return;
-            router.push({
-              pathname: "/(trainer)/video-call" as never,
-              params: {
-                clientId,
-                clientName: clientName ?? "Client",
-              },
-            });
+            router.push("/(trainer)/bookings" as never);
           }}
           style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}
         >

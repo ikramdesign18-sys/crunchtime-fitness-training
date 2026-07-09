@@ -18,15 +18,18 @@ import Badge from "@/components/ui/Badge";
 import SectionHeader from "@/components/ui/SectionHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { PROGRESS_DATA, WORKOUTS } from "@/lib/dummyData";
 import {
   fetchBmiRecords,
+  fetchPublishedWorkoutVideos,
+  fetchPublishedMealPlans,
   fetchNotifications,
   fetchWorkoutProgress,
   type AppNotification,
   type BmiRecord,
+  type MealPlan,
   type WorkoutProgress,
 } from "@/lib/supabaseApi";
+import { type CatalogWorkout, workoutVideoToCatalogWorkout } from "@/lib/workoutCatalog";
 
 function getBMICategory(bmi: number) {
   if (bmi < 18.5) return { label: "Underweight", color: "info" as const };
@@ -49,10 +52,11 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const todayWorkout = WORKOUTS[0];
   const [bmiRecords, setBmiRecords] = useState<BmiRecord[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutProgress[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [todayWorkout, setTodayWorkout] = useState<CatalogWorkout | null>(null);
+  const [featuredMealPlan, setFeaturedMealPlan] = useState<MealPlan | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -60,33 +64,34 @@ export default function HomeScreen() {
       fetchBmiRecords(user.id),
       fetchWorkoutProgress(user.id),
       fetchNotifications(user.id),
+      fetchPublishedWorkoutVideos(),
+      fetchPublishedMealPlans(user.id),
     ])
-      .then(([bmi, progress, notifs]) => {
+      .then(([bmi, progress, notifs, publishedWorkouts, mealPlans]) => {
         setBmiRecords(bmi);
         setWorkouts(progress);
         setNotifications(notifs);
+        setTodayWorkout(publishedWorkouts[0] ? workoutVideoToCatalogWorkout(publishedWorkouts[0]) : null);
+        setFeaturedMealPlan(mealPlans[0] ?? null);
       })
       .catch(() => {});
   }, [user]);
 
   const latestProgress = useMemo(() => {
-    const fallback = PROGRESS_DATA[PROGRESS_DATA.length - 1];
     const latestBmi = bmiRecords[bmiRecords.length - 1];
-    if (!latestBmi) return fallback;
+    if (!latestBmi) return null;
     return {
-      ...fallback,
       weight: Number(latestBmi.weight),
       bmi: Number(latestBmi.bmi),
       workoutsCompleted: workouts.length,
       caloriesBurned: workouts.reduce((sum, item) => sum + (item.calories_burned ?? 0), 0),
     };
   }, [bmiRecords, workouts]);
-  const bmiCat = getBMICategory(latestProgress.bmi);
+  const bmiCat = latestProgress ? getBMICategory(latestProgress.bmi) : null;
   const unread = notifications.filter((n) => !n.is_read).length;
-  const weekWorkouts = workouts.length || PROGRESS_DATA.slice(-1)[0].workoutsCompleted;
-  const totalCalories =
-    workouts.reduce((s, p) => s + (p.calories_burned ?? 0), 0) ||
-    PROGRESS_DATA.reduce((s, p) => s + p.caloriesBurned, 0);
+  const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekWorkouts = workouts.filter((item) => new Date(item.completed_at).getTime() >= weekStart).length;
+  const totalCalories = workouts.reduce((s, p) => s + (p.calories_burned ?? 0), 0);
 
   return (
     <ScrollView
@@ -113,31 +118,35 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Today's Workout */}
-      <SectionHeader title="Today's Workout" rightLabel="All" onRightPress={() => router.push("/(user)/workouts")} style={{ marginTop: 24 }} />
-      <Pressable onPress={() => router.push({ pathname: "/(user)/workout-detail", params: { workoutId: todayWorkout.id } })}>
-        <LinearGradient colors={["#D66433", "#B5522A"]} style={[styles.workoutCard, { borderRadius: colors.radius }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.workoutContent}>
-            <View>
-              <Text style={styles.workoutLabel}>RECOMMENDED</Text>
-              <Text style={styles.workoutTitle}>{todayWorkout.title}</Text>
-              <View style={styles.workoutMeta}>
-                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.workoutMetaText}>{todayWorkout.duration} min</Text>
-                <Text style={styles.workoutMetaDot}>·</Text>
-                <Text style={styles.workoutMetaText}>{todayWorkout.calories} cal</Text>
+      {todayWorkout ? (
+        <>
+          {/* Today's Workout */}
+          <SectionHeader title="Today's Workout" rightLabel="All" onRightPress={() => router.push("/(user)/workouts")} style={{ marginTop: 24 }} />
+          <Pressable onPress={() => router.push({ pathname: "/(user)/workout-detail", params: { workoutId: todayWorkout.id } })}>
+            <LinearGradient colors={["#D4AF37", "#A47F1F"]} style={[styles.workoutCard, { borderRadius: colors.radius }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <View style={styles.workoutContent}>
+                <View>
+                  <Text style={styles.workoutLabel}>RECOMMENDED</Text>
+                  <Text style={styles.workoutTitle}>{todayWorkout.title}</Text>
+                  <View style={styles.workoutMeta}>
+                    <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.workoutMetaText}>{todayWorkout.duration} min</Text>
+                    <Text style={styles.workoutMetaDot}>·</Text>
+                    <Text style={styles.workoutMetaText}>{todayWorkout.calories} cal</Text>
+                  </View>
+                </View>
+                <View style={styles.startBtn}>
+                  <Ionicons name="play" size={18} color="#D4AF37" />
+                </View>
               </View>
-            </View>
-            <View style={styles.startBtn}>
-              <Ionicons name="play" size={18} color="#D66433" />
-            </View>
-          </View>
-          <View style={styles.workoutBadgeRow}>
-            <Badge label={todayWorkout.difficulty} color="muted" small />
-            <Badge label={todayWorkout.category} color="muted" small style={{ marginLeft: 6 }} />
-          </View>
-        </LinearGradient>
-      </Pressable>
+              <View style={styles.workoutBadgeRow}>
+                <Badge label={todayWorkout.difficulty} color="muted" small />
+                <Badge label={todayWorkout.category} color="muted" small style={{ marginLeft: 6 }} />
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </>
+      ) : null}
 
       {/* Stats Row */}
       <View style={styles.statsRow}>
@@ -153,7 +162,7 @@ export default function HomeScreen() {
         </AppCard>
         <AppCard onPress={() => router.push("/(user)/bmi")} style={styles.statCard}>
           <Ionicons name="body-outline" size={20} color={colors.success} />
-          <Text style={[styles.statValue, { color: colors.foreground }]}>{latestProgress.bmi}</Text>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>{latestProgress ? latestProgress.bmi.toFixed(1) : "—"}</Text>
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>BMI</Text>
         </AppCard>
       </View>
@@ -163,9 +172,9 @@ export default function HomeScreen() {
         <View style={styles.bmiRow}>
           <View>
             <Text style={[styles.bmiTitle, { color: colors.foreground }]}>BMI Status</Text>
-            <Text style={[styles.bmiValue, { color: colors.primary }]}>{latestProgress.bmi}</Text>
+            <Text style={[styles.bmiValue, { color: colors.primary }]}>{latestProgress ? latestProgress.bmi.toFixed(1) : "—"}</Text>
           </View>
-          <Badge label={bmiCat.label} color={bmiCat.color} />
+          <Badge label={bmiCat?.label ?? "Not Set"} color={bmiCat?.color ?? "muted"} />
         </View>
         <Text style={[styles.bmiSub, { color: colors.mutedForeground }]}>Tap to calculate or update your BMI</Text>
       </AppCard>
@@ -177,7 +186,7 @@ export default function HomeScreen() {
           { icon: "chatbubbles-outline" as const, label: "Chat", route: "/(user)/chat" },
           { icon: "calendar-outline" as const, label: "Book", route: "/(user)/booking" },
           { icon: "videocam-outline" as const, label: "Submit Video", route: "/(user)/video-submit" },
-          { icon: "call-outline" as const, label: "Video Call", route: "/(user)/video-call" },
+          { icon: "call-outline" as const, label: "Video Call", route: "/(user)/booking" },
         ].map((action) => (
           <AppCard
             key={action.label}
@@ -195,18 +204,39 @@ export default function HomeScreen() {
 
       {/* Meal Plan Teaser */}
       <SectionHeader title="Meal Plan" rightLabel="View All" onRightPress={() => router.push("/(user)/meals")} style={{ marginTop: 24 }} />
-      <AppCard onPress={() => router.push({ pathname: "/(user)/meal-detail", params: { mealId: "m2" } })}>
-        <View style={styles.mealRow}>
-          <View style={[styles.mealIcon, { backgroundColor: "#22C55E20" }]}>
-            <Ionicons name="restaurant-outline" size={24} color="#22C55E" />
+      {featuredMealPlan ? (
+        <AppCard onPress={() => router.push({ pathname: "/(user)/meal-detail", params: { mealId: featuredMealPlan.id } })}>
+          <View style={styles.mealRow}>
+            <View style={[styles.mealIcon, { backgroundColor: "#22C55E20" }]}>
+              <Ionicons name="restaurant-outline" size={24} color="#22C55E" />
+            </View>
+            <View style={styles.mealInfo}>
+              <Text style={[styles.mealTitle, { color: colors.foreground }]}>{featuredMealPlan.title}</Text>
+              <Text style={[styles.mealSub, { color: colors.mutedForeground }]}>
+                {[
+                  featuredMealPlan.calories_per_day ? `${featuredMealPlan.calories_per_day} cal` : null,
+                  featuredMealPlan.protein ? `${featuredMealPlan.protein}g protein` : null,
+                  featuredMealPlan.carbs ? `${featuredMealPlan.carbs}g carbs` : null,
+                ].filter(Boolean).join(" · ") || featuredMealPlan.goal || "View plan details"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color={colors.mutedForeground} />
           </View>
-          <View style={styles.mealInfo}>
-            <Text style={[styles.mealTitle, { color: colors.foreground }]}>Muscle Gain Plan</Text>
-            <Text style={[styles.mealSub, { color: colors.mutedForeground }]}>3,000 cal · 220g protein · 320g carbs</Text>
+        </AppCard>
+      ) : (
+        <AppCard onPress={() => router.push("/(user)/meals")}>
+          <View style={styles.mealRow}>
+            <View style={[styles.mealIcon, { backgroundColor: colors.muted }]}>
+              <Ionicons name="restaurant-outline" size={24} color={colors.mutedForeground} />
+            </View>
+            <View style={styles.mealInfo}>
+              <Text style={[styles.mealTitle, { color: colors.foreground }]}>No meal plans available yet.</Text>
+              <Text style={[styles.mealSub, { color: colors.mutedForeground }]}>Your trainer can publish or assign one for you.</Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color={colors.mutedForeground} />
           </View>
-          <Ionicons name="chevron-forward-outline" size={18} color={colors.mutedForeground} />
-        </View>
-      </AppCard>
+        </AppCard>
+      )}
     </ScrollView>
   );
 }

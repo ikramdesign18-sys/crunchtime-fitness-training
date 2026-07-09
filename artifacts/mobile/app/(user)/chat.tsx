@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   FlatList,
   Platform,
@@ -18,7 +18,8 @@ import { useColors } from "@/hooks/useColors";
 import { supabase } from "@/lib/supabase";
 import {
   fetchThreadMessages,
-  findTrainerProfile,
+  fetchThreadById,
+  getDefaultTrainer,
   getOrCreateThread,
   sendThreadMessage,
   type ChatMessage,
@@ -30,6 +31,11 @@ export default function ChatScreen() {
   const colors = useColors();
   const { user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    threadId?: string;
+    trainerId?: string;
+    trainerName?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -40,19 +46,44 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!user) return;
+    const currentUser = user;
     let activeThread: ChatThread | null = null;
 
-    findTrainerProfile()
-      .then((trainerProfile) => {
-        setTrainer(trainerProfile);
-        return getOrCreateThread(user.id, trainerProfile.id);
+    async function loadChat() {
+      const threadId = typeof params.threadId === "string" ? params.threadId : "";
+      const trainerId = typeof params.trainerId === "string" ? params.trainerId : "";
+
+      if (threadId) {
+        const existingThread = await fetchThreadById(threadId);
+        if (existingThread) {
+          activeThread = existingThread;
+          setThread(existingThread);
+          const trainerProfile = await getDefaultTrainer(existingThread.user_id);
+          setTrainer(
+            trainerProfile.id === existingThread.trainer_id
+              ? trainerProfile
+              : ({ id: existingThread.trainer_id, full_name: params.trainerName ?? "Trainer" } as Profile)
+          );
+          setMessages(await fetchThreadMessages(existingThread.id));
+          return;
+        }
+      }
+
+      const trainerProfile = trainerId
+        ? ({ id: trainerId, full_name: params.trainerName ?? "Trainer" } as Profile)
+        : await getDefaultTrainer(currentUser.id);
+
+      setTrainer(trainerProfile);
+      const nextThread = await getOrCreateThread(currentUser.id, trainerProfile.id);
+      activeThread = nextThread;
+      setThread(nextThread);
+      setMessages(await fetchThreadMessages(nextThread.id));
+    }
+
+    loadChat()
+      .catch(() => {
+        setTrainer(null);
       })
-      .then(async (nextThread) => {
-        activeThread = nextThread;
-        setThread(nextThread);
-        setMessages(await fetchThreadMessages(nextThread.id));
-      })
-      .catch(() => {});
 
     const channel = supabase
       .channel(`user-chat-${user.id}`)
@@ -71,7 +102,7 @@ export default function ChatScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [params.threadId, params.trainerId, params.trainerName, user]);
 
   const send = async () => {
     if (!text.trim() || !thread || !user) return;
@@ -144,14 +175,7 @@ export default function ChatScreen() {
         </View>
         <TouchableOpacity
           onPress={() => {
-            if (!trainer) return;
-            router.push({
-              pathname: "/(user)/video-call",
-              params: {
-                trainerId: trainer.id,
-                trainerName: trainer.full_name ?? "Trainer",
-              },
-            });
+            router.push("/(user)/booking");
           }}
           style={[styles.callBtn, { backgroundColor: colors.primaryLight }]}
         >
