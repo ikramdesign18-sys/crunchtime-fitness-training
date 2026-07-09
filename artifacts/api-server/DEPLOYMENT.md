@@ -1,12 +1,12 @@
 # API Server Vercel Deployment
 
-This package is deployable as a Vercel Express backend. The Vercel entry is `index.ts`, which loads the reusable Express app from `src/app.ts`. The local development listener remains `src/index.ts`.
+This package is deployable as a Vercel Express backend. The Vercel serverless entry is `api/index.ts`, which exports the reusable Express app from `src/app.ts`. The local development listener remains `src/index.ts`.
 
 ## Vercel project setup
 
 1. Create a Vercel project from this repository.
 2. Set the project Root Directory to `artifacts/api-server`.
-3. Use the Express framework preset. `vercel.json` pins this with `"framework": "express"`.
+3. Vercel routes all requests to the single `api/index.ts` function through `vercel.json` rewrites.
 4. Leave secrets in Vercel Project Settings > Environment Variables. Do not put real values in this file.
 5. Deploy from Vercel after environment variables are configured.
 
@@ -42,7 +42,7 @@ Do not include `/api` in `EXPO_PUBLIC_API_BASE_URL`; the mobile app already appe
 
 ## Routes
 
-The Express app mounts all API routes under `/api`, including:
+The Express app mounts all API routes under `/api`. Vercel should only deploy `api/index.ts` as the function entry; files under `src/routes` are app modules, not standalone functions. Routes include:
 
 - `GET /api/health`
 - `POST /api/agora/token`

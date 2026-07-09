@@ -7,7 +7,7 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["index.ts", "src"],
+  "include": ["api", "index.ts", "src"],
   "references": [
     {
       "path": "../../lib/db"
