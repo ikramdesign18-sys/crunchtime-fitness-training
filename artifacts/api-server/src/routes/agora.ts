@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import { RtcRole, RtcTokenBuilder } from "agora-token";
 
@@ -28,6 +28,12 @@ interface ProfileRow {
   id: string;
   role: string;
 }
+
+type FetchJsonResponse = {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+};
 
 function getTokenExpirySeconds() {
   const raw = process.env.AGORA_TOKEN_EXPIRE_SECONDS?.trim() || "3600";
@@ -65,12 +71,12 @@ async function getAuthenticatedUserId(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/auth/v1/user`, {
+  const response = (await fetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) return null;
   const user = (await response.json().catch(() => null)) as SupabaseUserResponse | null;
@@ -81,13 +87,13 @@ async function fetchSingleFromSupabase<T>(path: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = (await fetch(`${config.url}/rest/v1/${path}`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${config.serviceRoleKey}`,
       Accept: "application/json",
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) {
     throw new Error(`supabase-query-failed-${response.status}`);
@@ -123,7 +129,7 @@ function isBookingPaymentConfirmed(booking: BookingRow) {
   );
 }
 
-router.post("/agora/token", async (req, res) => {
+router.post("/agora/token", async (req: Request, res: ExpressResponse) => {
   const appId = process.env.AGORA_APP_ID?.trim() ?? "";
   const appCertificate = process.env.AGORA_APP_CERTIFICATE?.trim() ?? "";
 
