@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
+import { Router, type IRouter, type Request as ExpressRequest, type Response as ExpressResponse } from "express";
 import Stripe from "stripe";
 
 const router: IRouter = Router();
@@ -279,7 +279,7 @@ async function getAuthenticatedUser(accessToken: string) {
   };
 }
 
-async function requireUser(req: Request) {
+async function requireUser(req: ExpressRequest) {
   const token = getBearerToken(req.headers.authorization);
   if (!token) return null;
   return getAuthenticatedUser(token);
@@ -924,7 +924,7 @@ router.post("/promo/redeem", async (req, res) => {
   }
 });
 
-async function createMembershipCheckout(req: Request, res: ExpressResponse) {
+async function createMembershipCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe memberships are not configured yet." });
@@ -986,7 +986,7 @@ async function createMembershipCheckout(req: Request, res: ExpressResponse) {
   }
 }
 
-async function createBookingCheckout(req: Request, res: ExpressResponse) {
+async function createBookingCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe payments are not configured yet." });
@@ -1043,7 +1043,7 @@ async function createBookingCheckout(req: Request, res: ExpressResponse) {
   }
 }
 
-async function createMealPlanCheckout(req: Request, res: ExpressResponse) {
+async function createMealPlanCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe meal plan payments are not configured yet." });
@@ -1090,7 +1090,7 @@ async function createMealPlanCheckout(req: Request, res: ExpressResponse) {
   }
 }
 
-async function createWorkoutVideoCheckout(req: Request, res: ExpressResponse) {
+async function createWorkoutVideoCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe workout video payments are not configured yet." });
@@ -1275,7 +1275,7 @@ router.post("/stripe/webhook", async (req, res) => {
   }
 
   const signature = req.headers["stripe-signature"];
-  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+  const rawBody = (req as ExpressRequest & { rawBody?: Buffer }).rawBody;
   if (!signature || !rawBody) {
     res.status(400).json({ error: "Stripe signature or raw body is missing." });
     return;

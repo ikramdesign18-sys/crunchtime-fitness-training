@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
+import { Router, type IRouter, type Request as ExpressRequest, type Response as ExpressResponse } from "express";
 
 const router: IRouter = Router();
 
@@ -100,7 +100,7 @@ async function getAuthenticatedUser(accessToken: string) {
   return { id: user.id, email: typeof user.email === "string" ? user.email : null };
 }
 
-async function requireUser(req: Request) {
+async function requireUser(req: ExpressRequest) {
   const token = getBearerToken(req.headers.authorization);
   if (!token) return null;
   return getAuthenticatedUser(token);
@@ -131,7 +131,7 @@ function canMarkBookingFree(profile: ProfileRow | null, booking: BookingRow, sta
   return false;
 }
 
-router.post("/bookings/:id/payment-status", async (req: Request<BookingPaymentStatusParams>, res: ExpressResponse) => {
+router.post("/bookings/:id/payment-status", async (req: ExpressRequest<BookingPaymentStatusParams>, res: ExpressResponse) => {
   if (!getSupabaseConfig()) {
     res.status(503).json({ error: "Booking payment server is not configured yet." });
     return;

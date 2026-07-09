@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
+import { Router, type IRouter, type Request as ExpressRequest, type Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import { RtcRole, RtcTokenBuilder } from "agora-token";
 
@@ -129,7 +129,7 @@ function isBookingPaymentConfirmed(booking: BookingRow) {
   );
 }
 
-router.post("/agora/token", async (req: Request, res: ExpressResponse) => {
+router.post("/agora/token", async (req: ExpressRequest, res: ExpressResponse) => {
   const appId = process.env.AGORA_APP_ID?.trim() ?? "";
   const appCertificate = process.env.AGORA_APP_CERTIFICATE?.trim() ?? "";
 
