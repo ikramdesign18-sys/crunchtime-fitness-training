@@ -110,6 +110,20 @@ type FetchInit = {
   headers?: Record<string, string>;
 };
 
+type FetchLikeResponse = {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  text: () => Promise<string>;
+};
+
+async function safeFetch(
+  input: string,
+  init?: Record<string, unknown>,
+): Promise<FetchLikeResponse> {
+  return (await fetch(input, init as any)) as unknown as FetchLikeResponse;
+}
+
 const LEGACY_PLAN_NAMES: LegacyPlanName[] = ["bronze", "silver", "gold", "platinum"];
 
 const FALLBACK_PRICING: Record<PricingKey, Omit<PricingConfigRow, "id" | "is_active">> = {
@@ -222,7 +236,7 @@ async function supabaseFetch<T>(path: string, init?: FetchInit) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = await safeFetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.serviceRoleKey,
@@ -257,7 +271,7 @@ async function getAuthenticatedUser(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/auth/v1/user`, {
+  const response = await safeFetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
