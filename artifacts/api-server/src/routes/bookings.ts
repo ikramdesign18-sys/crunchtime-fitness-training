@@ -1,7 +1,7 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 
-const router: IRouter = Router();
+const router = Router();
 
 type BookingPaymentStatus = "unpaid" | "paid" | "failed" | "refunded" | "free_promo" | "waived";
 type FreeBookingPaymentStatus = Extract<BookingPaymentStatus, "free_promo" | "waived">;

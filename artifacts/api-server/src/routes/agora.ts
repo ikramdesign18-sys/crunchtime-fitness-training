@@ -1,8 +1,9 @@
-import { Router, type IRouter, type Request as ExpressRequest, type Response as ExpressResponse } from "express";
+import { Router } from "express";
+import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 import { createHash } from "node:crypto";
 import { RtcRole, RtcTokenBuilder } from "agora-token";
 
-const router: IRouter = Router();
+const router = Router();
 
 type AgoraRole = "publisher" | "subscriber";
 type BookingStatus = "pending" | "accepted" | "active" | "declined";

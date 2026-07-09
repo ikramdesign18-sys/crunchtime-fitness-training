@@ -1,7 +1,8 @@
-import { Router, type IRouter, type Request as ExpressRequest, type Response as ExpressResponse } from "express";
+import { Router } from "express";
+import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 import Stripe from "stripe";
 
-const router: IRouter = Router();
+const router = Router();
 
 type BillingInterval = "monthly" | "yearly";
 type LegacyPlanName = "bronze" | "silver" | "gold" | "platinum";
