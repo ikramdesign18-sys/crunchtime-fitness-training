@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import Stripe from "stripe";
 
 const router: IRouter = Router();
@@ -102,6 +102,19 @@ interface ContentAccessStatus {
   hasAccess: boolean;
   reason: "free" | "purchased" | "assigned" | "trainer" | "locked" | "not_found";
 }
+
+type FetchInit = {
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+};
+
+type FetchJsonResponse = {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+};
 
 const LEGACY_PLAN_NAMES: LegacyPlanName[] = ["bronze", "silver", "gold", "platinum"];
 
@@ -211,11 +224,11 @@ function normalizeContentType(value: unknown): ContentType | null {
   return null;
 }
 
-async function supabaseFetch<T>(path: string, init?: RequestInit) {
+async function supabaseFetch<T>(path: string, init?: FetchInit) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = (await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.serviceRoleKey,
@@ -224,7 +237,7 @@ async function supabaseFetch<T>(path: string, init?: RequestInit) {
       Prefer: "return=representation",
       ...(init?.headers ?? {}),
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -250,12 +263,12 @@ async function getAuthenticatedUser(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/auth/v1/user`, {
+  const response = (await fetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) return null;
   const user = (await response.json().catch(() => null)) as SupabaseUserResponse | null;
@@ -911,7 +924,7 @@ router.post("/promo/redeem", async (req, res) => {
   }
 });
 
-async function createMembershipCheckout(req: Request, res: Response) {
+async function createMembershipCheckout(req: Request, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe memberships are not configured yet." });
@@ -973,7 +986,7 @@ async function createMembershipCheckout(req: Request, res: Response) {
   }
 }
 
-async function createBookingCheckout(req: Request, res: Response) {
+async function createBookingCheckout(req: Request, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe payments are not configured yet." });
@@ -1030,7 +1043,7 @@ async function createBookingCheckout(req: Request, res: Response) {
   }
 }
 
-async function createMealPlanCheckout(req: Request, res: Response) {
+async function createMealPlanCheckout(req: Request, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe meal plan payments are not configured yet." });
@@ -1077,7 +1090,7 @@ async function createMealPlanCheckout(req: Request, res: Response) {
   }
 }
 
-async function createWorkoutVideoCheckout(req: Request, res: Response) {
+async function createWorkoutVideoCheckout(req: Request, res: ExpressResponse) {
   const stripe = getStripe();
   if (!stripe || !getSupabaseConfig()) {
     res.status(503).json({ error: "Stripe workout video payments are not configured yet." });

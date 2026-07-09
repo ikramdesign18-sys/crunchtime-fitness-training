@@ -1,9 +1,10 @@
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 
 const router: IRouter = Router();
 
 type BookingPaymentStatus = "unpaid" | "paid" | "failed" | "refunded" | "free_promo" | "waived";
 type FreeBookingPaymentStatus = Extract<BookingPaymentStatus, "free_promo" | "waived">;
+type BookingPaymentStatusParams = { id: string };
 
 interface SupabaseUserResponse {
   id?: unknown;
@@ -24,6 +25,19 @@ interface BookingRow {
   amount_paid: number | null;
 }
 
+type FetchInit = {
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+};
+
+type FetchJsonResponse = {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+};
+
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
 }
@@ -41,11 +55,11 @@ function getBearerToken(authHeader: unknown) {
   return match?.[1]?.trim() ?? "";
 }
 
-async function supabaseFetch<T>(path: string, init?: RequestInit) {
+async function supabaseFetch<T>(path: string, init?: FetchInit) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = (await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.serviceRoleKey,
@@ -54,7 +68,7 @@ async function supabaseFetch<T>(path: string, init?: RequestInit) {
       Prefer: "return=representation",
       ...(init?.headers ?? {}),
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -73,12 +87,12 @@ async function getAuthenticatedUser(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/auth/v1/user`, {
+  const response = (await fetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  })) as unknown as FetchJsonResponse;
 
   if (!response.ok) return null;
   const user = (await response.json().catch(() => null)) as SupabaseUserResponse | null;
@@ -117,7 +131,7 @@ function canMarkBookingFree(profile: ProfileRow | null, booking: BookingRow, sta
   return false;
 }
 
-router.post("/bookings/:id/payment-status", async (req, res) => {
+router.post("/bookings/:id/payment-status", async (req: Request<BookingPaymentStatusParams>, res: ExpressResponse) => {
   if (!getSupabaseConfig()) {
     res.status(503).json({ error: "Booking payment server is not configured yet." });
     return;
