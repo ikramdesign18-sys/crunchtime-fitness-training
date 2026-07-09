@@ -109,13 +109,6 @@ type FetchInit = {
   headers?: Record<string, string>;
 };
 
-type FetchJsonResponse = {
-  ok: boolean;
-  status: number;
-  json(): Promise<unknown>;
-  text(): Promise<string>;
-};
-
 const LEGACY_PLAN_NAMES: LegacyPlanName[] = ["bronze", "silver", "gold", "platinum"];
 
 const FALLBACK_PRICING: Record<PricingKey, Omit<PricingConfigRow, "id" | "is_active">> = {
@@ -228,7 +221,7 @@ async function supabaseFetch<T>(path: string, init?: FetchInit) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = (await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.serviceRoleKey,
@@ -237,7 +230,7 @@ async function supabaseFetch<T>(path: string, init?: FetchInit) {
       Prefer: "return=representation",
       ...(init?.headers ?? {}),
     },
-  })) as unknown as FetchJsonResponse;
+  });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -263,12 +256,12 @@ async function getAuthenticatedUser(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = (await fetch(`${config.url}/auth/v1/user`, {
+  const response = await fetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
     },
-  })) as unknown as FetchJsonResponse;
+  });
 
   if (!response.ok) return null;
   const user = (await response.json().catch(() => null)) as SupabaseUserResponse | null;
