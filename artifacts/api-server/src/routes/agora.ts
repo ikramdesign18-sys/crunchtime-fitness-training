@@ -30,6 +30,20 @@ interface ProfileRow {
   role: string;
 }
 
+type FetchLikeResponse = {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  text: () => Promise<string>;
+};
+
+async function safeFetch(
+  input: string,
+  init?: Record<string, unknown>,
+): Promise<FetchLikeResponse> {
+  return (await fetch(input, init as any)) as unknown as FetchLikeResponse;
+}
+
 function getTokenExpirySeconds() {
   const raw = process.env.AGORA_TOKEN_EXPIRE_SECONDS?.trim() || "3600";
   const value = Number(raw);
@@ -66,7 +80,7 @@ async function getAuthenticatedUserId(accessToken: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/auth/v1/user`, {
+  const response = await safeFetch(`${config.url}/auth/v1/user`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${accessToken}`,
@@ -82,7 +96,7 @@ async function fetchSingleFromSupabase<T>(path: string) {
   const config = getSupabaseConfig();
   if (!config) throw new Error("supabase-not-configured");
 
-  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+  const response = await safeFetch(`${config.url}/rest/v1/${path}`, {
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${config.serviceRoleKey}`,
