@@ -50,6 +50,8 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    console.info(`API_BASE_URL = ${process.env.EXPO_PUBLIC_API_BASE_URL ?? "not-configured"}`);
+
     if (__DEV__) {
       console.info(`[env-debug]\n${formatSafeEnvDebugStatus()}`);
     }
