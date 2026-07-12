@@ -9,13 +9,17 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://crunchtime-fitness-training-api-ser-beta.vercel.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://crunchtime-fitness-training-api-ser-beta.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indtd3dqaWF5c3Frb2xhYnF1bXp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjM2MTE5MSwiZXhwIjoyMDk3OTM3MTkxfQ.lemx-1yY_pJWrA2gk5FaZbwlsIkdk2a4_npiWInnykg",
+        "EXPO_PUBLIC_AGORA_APP_ID": "c369983004c4079b40c9a7e4ce16e0a"
       }
     },
     "preview": {
       "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://crunchtime-fitness-training-api-ser-beta.vercel.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://crunchtime-fitness-training-api-ser-beta.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indtd3dqaWF5c3Frb2xhYnF1bXp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjM2MTE5MSwiZXhwIjoyMDk3OTM3MTkxfQ.lemx-1yY_pJWrA2gk5FaZbwlsIkdk2a4_npiWInnykg",
+        "EXPO_PUBLIC_AGORA_APP_ID": "c369983004c4079b40c9a7e4ce16e0a"
       },
       "android": {
         "buildType": "apk"
@@ -29,7 +33,9 @@
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://crunchtime-fitness-training-api-ser-beta.vercel.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://wmwwjiaysqkolabqumzv.supabase.co",
-        "EXPO_PUBLIC_VIDEO_CALL_PROVIDER": "agora"
+        "EXPO_PUBLIC_VIDEO_CALL_PROVIDER": "agora",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indtd3dqaWF5c3Frb2xhYnF1bXp2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjM2MTE5MSwiZXhwIjoyMDk3OTM3MTkxfQ.lemx-1yY_pJWrA2gk5FaZbwlsIkdk2a4_npiWInnykg",
+        "EXPO_PUBLIC_AGORA_APP_ID": "c369983004c4079b40c9a7e4ce16e0a"
       },
       "android": {
         "buildType": "app-bundle"
