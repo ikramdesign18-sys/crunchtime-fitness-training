@@ -43,20 +43,24 @@ export function isLocalApiBaseUrl() {
 
 export function getApiBaseUrlErrorMessage() {
   if (!API_BASE_URL.trim()) {
-    return "API server is not configured. Set EXPO_PUBLIC_API_BASE_URL in EAS preview environment and rebuild the APK.";
+    return isProductionBuild()
+      ? "Online services are temporarily unavailable. Please contact support."
+      : "API server is not configured. Set EXPO_PUBLIC_API_BASE_URL in the EAS build environment and rebuild the app.";
   }
 
   const apiUrl = parseApiBaseUrl();
   if (!apiUrl) {
-    return "API server URL is invalid. Set EXPO_PUBLIC_API_BASE_URL to your Mac LAN IP or deployed backend URL.";
+    return isProductionBuild()
+      ? "Online services are temporarily unavailable. Please contact support."
+      : "API server URL is invalid. Set EXPO_PUBLIC_API_BASE_URL to a deployed backend URL.";
   }
 
   if (isProductionBuild() && apiUrl.protocol !== "https:") {
-    return "Invalid API URL for production APK. Use an HTTPS API URL.";
+    return "Invalid API URL for the production app. Use an HTTPS API URL.";
   }
 
   if (!__DEV__ && isLocalApiBaseUrl()) {
-    return "Invalid API URL for APK. Use your Mac LAN IP or deployed backend URL, not localhost.";
+    return "Invalid API URL for the installed app. Use a deployed HTTPS backend URL, not localhost.";
   }
 
   return null;
@@ -65,7 +69,9 @@ export function getApiBaseUrlErrorMessage() {
 export function getVideoCallProviderErrorMessage() {
   const provider = normalizedVideoCallProvider();
   if (!provider) {
-    return "Video call provider is not configured. Add EXPO_PUBLIC_VIDEO_CALL_PROVIDER=agora in EAS preview environment and rebuild APK.";
+    return isProductionBuild()
+      ? "Video calling is temporarily unavailable. Please contact support."
+      : "Video call provider is not configured. Add EXPO_PUBLIC_VIDEO_CALL_PROVIDER=agora in the EAS build environment and rebuild the app.";
   }
 
   if (provider !== "agora") {
@@ -88,7 +94,9 @@ export function getVideoCallSetupMessage() {
   if (providerError) return providerError;
 
   if (!AGORA_APP_ID.trim()) {
-    return "Agora is not configured in this APK. Add EXPO_PUBLIC_AGORA_APP_ID, EXPO_PUBLIC_API_BASE_URL, and EXPO_PUBLIC_VIDEO_CALL_PROVIDER=agora in EAS preview environment, then rebuild APK.";
+    return isProductionBuild()
+      ? "Video calling is temporarily unavailable. Please contact support."
+      : "Agora is not configured. Add its public app ID, the API base URL, and the Agora provider to the EAS build environment, then rebuild the app.";
   }
 
   return null;

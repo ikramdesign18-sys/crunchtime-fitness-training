@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Crunchtime Fitness Training",
+    "name": "CrunchTime Fitness Training",
     "slug": "crunchtime-fitness-training",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,13 +16,17 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.crunchtime.fitnesstraining",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Crunchtime Fitness Training uses the camera for trainer video calls.",
-        "NSMicrophoneUsageDescription": "Crunchtime Fitness Training uses the microphone for trainer video calls."
+        "NSCameraUsageDescription": "CrunchTime Fitness Training uses the camera for trainer video calls and to capture fitness photos or videos you choose to upload.",
+        "NSMicrophoneUsageDescription": "CrunchTime Fitness Training uses the microphone for trainer video calls and videos you choose to record.",
+        "NSPhotoLibraryUsageDescription": "CrunchTime Fitness Training accesses your photo library only when you choose a fitness photo or video to upload to your trainer.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.crunchtime.fitnesstraining",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -46,7 +50,16 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CrunchTime Fitness Training accesses your photo library only when you choose a fitness photo or video to upload to your trainer.",
+          "cameraPermission": "CrunchTime Fitness Training uses the camera to capture fitness photos or videos you choose to upload.",
+          "microphonePermission": "CrunchTime Fitness Training uses the microphone for videos you choose to record."
+        }
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

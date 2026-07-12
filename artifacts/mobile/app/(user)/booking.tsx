@@ -276,7 +276,6 @@ export default function BookingScreen() {
           placeholder="Enter promo code"
           value={promoCode}
           onChangeText={setPromoCode}
-          autoCapitalize="characters"
         />
 
         <AppButton
