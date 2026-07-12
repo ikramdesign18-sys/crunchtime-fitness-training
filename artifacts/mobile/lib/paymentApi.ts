@@ -5,11 +5,23 @@ import type { PricingConfigItem } from "@/lib/paymentConfig";
 import type { Booking, TrainerWorkoutVideo } from "@/lib/supabaseApi";
 import { API_BASE_URL, getApiBaseUrlErrorMessage } from "@/lib/videoCallConfig";
 
+export const ONLINE_PAYMENT_UNAVAILABLE_MESSAGE =
+  "Online payment is not available yet. Please enter a promo code or contact support.";
+
 interface CheckoutResponse {
   url?: string;
   amount?: number;
   currency?: string;
   error?: string;
+}
+
+interface BookingCheckoutResponse extends CheckoutResponse {
+  booking?: Booking;
+  paymentStatus?: "free_promo";
+  promo?: {
+    code?: string;
+    message?: string;
+  };
 }
 
 export interface AppAccessStatus {
@@ -58,6 +70,16 @@ async function readJson<T>(response: Response) {
   return (await response.json().catch(() => null)) as T | null;
 }
 
+function getUserFacingPaymentError(message?: string) {
+  if (
+    message &&
+    /online payment is not available yet|stripe.*(?:not configured|secret|price|key)/i.test(message)
+  ) {
+    return ONLINE_PAYMENT_UNAVAILABLE_MESSAGE;
+  }
+  return message;
+}
+
 async function getJson<T>(path: string, accessToken?: string) {
   const response = await fetch(getApiUrl(path), {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
@@ -85,7 +107,7 @@ async function postJson<T>(
 
   const data = await readJson<T & { error?: string }>(response);
   if (!response.ok) {
-    throw new Error(data?.error || "Could not complete this request.");
+    throw new Error(getUserFacingPaymentError(data?.error) || "Could not complete this request.");
   }
   return data as T;
 }
@@ -93,7 +115,7 @@ async function postJson<T>(
 async function postCheckout(path: string, accessToken: string, body: Record<string, unknown>) {
   const data = await postJson<CheckoutResponse>(path, accessToken, body);
   if (!data?.url) {
-    throw new Error("Stripe checkout did not return a payment URL.");
+    throw new Error("Online payment could not be started. Please try again or contact support.");
   }
   return data;
 }
@@ -158,15 +180,25 @@ export async function createBookingPaymentCheckout(values: {
   sessionDate: string;
   sessionTime: string;
   note?: string | null;
+  promoCode?: string | null;
 }) {
-  return postCheckout("/api/stripe/create-booking-checkout", values.accessToken, {
-    sessionType: values.sessionType,
-    sessionDate: values.sessionDate,
-    sessionTime: values.sessionTime,
-    note: values.note ?? "",
-    successUrl: paymentReturnUrl("/(user)/booking?checkout=success"),
-    cancelUrl: paymentReturnUrl("/(user)/booking?checkout=cancel"),
-  });
+  const data = await postJson<BookingCheckoutResponse>(
+    "/api/stripe/create-booking-checkout",
+    values.accessToken,
+    {
+      sessionType: values.sessionType,
+      sessionDate: values.sessionDate,
+      sessionTime: values.sessionTime,
+      note: values.note ?? "",
+      promoCode: values.promoCode?.trim() ?? "",
+      successUrl: paymentReturnUrl("/(user)/booking?checkout=success"),
+      cancelUrl: paymentReturnUrl("/(user)/booking?checkout=cancel"),
+    },
+  );
+  if (!data?.url && !data?.booking) {
+    throw new Error("Could not create this booking.");
+  }
+  return data;
 }
 
 export async function markBookingPaymentStatus(values: {

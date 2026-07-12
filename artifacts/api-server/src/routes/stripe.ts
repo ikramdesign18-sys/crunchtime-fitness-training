@@ -4,6 +4,9 @@ import Stripe from "stripe";
 
 const router = Router();
 
+const ONLINE_PAYMENT_UNAVAILABLE_MESSAGE =
+  "Online payment is not available yet. Please use a promo code or contact support.";
+
 type BillingInterval = "monthly" | "yearly";
 type LegacyPlanName = "bronze" | "silver" | "gold" | "platinum";
 type PricingKey =
@@ -183,6 +186,17 @@ function getStripe() {
   return new Stripe(secretKey);
 }
 
+function sendOnlinePaymentUnavailable(res: ExpressResponse) {
+  res.status(503).json({
+    error: ONLINE_PAYMENT_UNAVAILABLE_MESSAGE,
+    code: "ONLINE_PAYMENT_UNAVAILABLE",
+  });
+}
+
+function hasStripePrice(item: PricingConfigRow) {
+  return typeof item.stripe_price_id === "string" && item.stripe_price_id.trim().length > 0;
+}
+
 function getSupabaseConfig() {
   const url = env("SUPABASE_URL");
   const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -345,7 +359,14 @@ async function getPricingConfig() {
     map.set(fallback.key, { ...fallback, is_active: true });
   }
   for (const row of rows) {
-    if (row.is_active) map.set(row.key, row);
+    if (row.is_active) {
+      const fallback = map.get(row.key);
+      map.set(row.key, {
+        ...(fallback ?? {}),
+        ...row,
+        stripe_price_id: row.stripe_price_id || fallback?.stripe_price_id || null,
+      });
+    }
   }
   return Array.from(map.values());
 }
@@ -934,8 +955,12 @@ router.post("/promo/redeem", async (req, res) => {
 
 async function createMembershipCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe memberships are not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Membership payments are not configured yet." });
+    return;
+  }
+  if (!stripe) {
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 
@@ -961,6 +986,10 @@ async function createMembershipCheckout(req: ExpressRequest, res: ExpressRespons
     }
 
     const pricing = await getPricingItem("membership_monthly");
+    if (!hasStripePrice(pricing)) {
+      sendOnlinePaymentUnavailable(res);
+      return;
+    }
     const customer = await getOrCreateCustomer(stripe, user.id, user.email);
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -995,9 +1024,8 @@ async function createMembershipCheckout(req: ExpressRequest, res: ExpressRespons
 }
 
 async function createBookingCheckout(req: ExpressRequest, res: ExpressResponse) {
-  const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe payments are not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Booking payments are not configured yet." });
     return;
   }
 
@@ -1012,16 +1040,60 @@ async function createBookingCheckout(req: ExpressRequest, res: ExpressResponse) 
   const sessionDate = typeof body.sessionDate === "string" ? body.sessionDate.trim() : "";
   const sessionTime = typeof body.sessionTime === "string" ? body.sessionTime.trim() : "";
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
+  const promoCode = typeof body.promoCode === "string" ? body.promoCode.trim() : "";
   const successUrl = getAppUrl(body.successUrl);
   const cancelUrl = getAppUrl(body.cancelUrl);
 
-  if (!sessionType || !sessionDate || !sessionTime || !successUrl || !cancelUrl) {
-    res.status(400).json({ error: "Session type, date, time, success URL, and cancel URL are required." });
+  if (!sessionType || !sessionDate || !sessionTime) {
+    res.status(400).json({ error: "Session type, date, and time are required." });
     return;
   }
-
   try {
+    if (promoCode) {
+      const trainerId = await getDefaultTrainerId(user.id);
+      const result = await supabaseRpc<Record<string, unknown>>("redeem_booking_promo", {
+        p_user_id: user.id,
+        p_trainer_id: trainerId,
+        p_code: promoCode,
+        p_session_type: sessionType,
+        p_session_date: sessionDate,
+        p_session_time: sessionTime,
+        p_note: note || null,
+      });
+      if (result.ok === false) {
+        res.status(400).json({
+          error: result.message ?? "This promo code cannot be used for this booking.",
+          result,
+        });
+        return;
+      }
+      res.status(201).json({
+        booking: result.booking,
+        promo: {
+          code: result.code,
+          message: result.message,
+        },
+        paymentStatus: "free_promo",
+      });
+      return;
+    }
+
+    if (!successUrl || !cancelUrl) {
+      res.status(400).json({ error: "Success URL and cancel URL are required for online payment." });
+      return;
+    }
+
+    const stripe = getStripe();
+    if (!stripe) {
+      sendOnlinePaymentUnavailable(res);
+      return;
+    }
+
     const pricing = await getPricingItem("booking_one_hour");
+    if (!hasStripePrice(pricing)) {
+      sendOnlinePaymentUnavailable(res);
+      return;
+    }
     const trainerId = await getDefaultTrainerId(user.id);
     const customer = await getOrCreateCustomer(stripe, user.id, user.email);
     const checkout = await stripe.checkout.sessions.create({
@@ -1053,8 +1125,12 @@ async function createBookingCheckout(req: ExpressRequest, res: ExpressResponse) 
 
 async function createMealPlanCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe meal plan payments are not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Meal plan payments are not configured yet." });
+    return;
+  }
+  if (!stripe) {
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 
@@ -1075,6 +1151,10 @@ async function createMealPlanCheckout(req: ExpressRequest, res: ExpressResponse)
 
   try {
     const pricing = await getPricingItem("custom_meal_plan");
+    if (!hasStripePrice(pricing)) {
+      sendOnlinePaymentUnavailable(res);
+      return;
+    }
     const customer = await getOrCreateCustomer(stripe, user.id, user.email);
     const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -1100,8 +1180,12 @@ async function createMealPlanCheckout(req: ExpressRequest, res: ExpressResponse)
 
 async function createWorkoutVideoCheckout(req: ExpressRequest, res: ExpressResponse) {
   const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe workout video payments are not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Workout video payments are not configured yet." });
+    return;
+  }
+  if (!stripe) {
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 
@@ -1140,6 +1224,10 @@ async function createWorkoutVideoCheckout(req: ExpressRequest, res: ExpressRespo
       amount_cents: workout.price_cents && workout.price_cents > 0 ? workout.price_cents : fallbackPricing.amount_cents,
       stripe_price_id: workout.stripe_price_id || fallbackPricing.stripe_price_id,
     };
+    if (!hasStripePrice(pricing)) {
+      sendOnlinePaymentUnavailable(res);
+      return;
+    }
     const customer = await getOrCreateCustomer(stripe, user.id, user.email);
     const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -1171,8 +1259,12 @@ router.post("/stripe/create-workout-video-checkout", createWorkoutVideoCheckout)
 
 router.post("/stripe/create-subscription-session", async (req, res) => {
   const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe subscriptions are not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Subscription payments are not configured yet." });
+    return;
+  }
+  if (!stripe) {
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 
@@ -1199,7 +1291,7 @@ router.post("/stripe/create-subscription-session", async (req, res) => {
 
   const priceId = getLegacyPriceId(planName, interval);
   if (!priceId) {
-    await createMembershipCheckout(req, res);
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 
@@ -1244,8 +1336,12 @@ router.post("/stripe/create-checkout-session", async (_req, res) => {
 
 router.post("/stripe/create-customer-portal-session", async (req, res) => {
   const stripe = getStripe();
-  if (!stripe || !getSupabaseConfig()) {
-    res.status(503).json({ error: "Stripe customer portal is not configured yet." });
+  if (!getSupabaseConfig()) {
+    res.status(503).json({ error: "Billing management is not configured yet." });
+    return;
+  }
+  if (!stripe) {
+    sendOnlinePaymentUnavailable(res);
     return;
   }
 

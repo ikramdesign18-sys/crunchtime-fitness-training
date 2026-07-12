@@ -206,6 +206,7 @@ export interface Booking {
   payment_status?: "unpaid" | "pending" | "paid" | "failed" | "refunded" | "free_promo" | "waived" | null;
   payment_id?: string | null;
   amount_paid?: number | null;
+  promo_code_used?: string | null;
   created_at: string;
   updated_at: string;
   clientName?: string;

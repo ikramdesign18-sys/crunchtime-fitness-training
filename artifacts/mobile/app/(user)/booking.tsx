@@ -19,7 +19,12 @@ import AppCard from "@/components/ui/AppCard";
 import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { createBookingPaymentCheckout, fetchPricingConfig, openStripeUrl } from "@/lib/paymentApi";
+import {
+  createBookingPaymentCheckout,
+  fetchPricingConfig,
+  ONLINE_PAYMENT_UNAVAILABLE_MESSAGE,
+  openStripeUrl,
+} from "@/lib/paymentApi";
 import { formatPrice, mergePricingConfig, type PricingConfigItem } from "@/lib/paymentConfig";
 import { fetchUserBookings, type Booking } from "@/lib/supabaseApi";
 
@@ -73,7 +78,9 @@ export default function BookingScreen() {
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedTime, setSelectedTime] = useState("");
   const [note, setNote] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submittedWithPromo, setSubmittedWithPromo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pricingRows, setPricingRows] = useState<PricingConfigItem[]>([]);
@@ -110,12 +117,23 @@ export default function BookingScreen() {
         sessionDate: days[selectedDay].value,
         sessionTime: selectedTime,
         note,
+        promoCode,
       });
-      await openStripeUrl(checkout.url!);
+      if (checkout.booking) {
+        setSubmittedWithPromo(true);
+      } else if (checkout.url) {
+        setSubmittedWithPromo(false);
+        await openStripeUrl(checkout.url);
+      }
       await loadBookings();
       setSubmitted(true);
     } catch (error) {
-      Alert.alert("Payment Failed", (error as Error).message);
+      const message = (error as Error).message;
+      const friendlyMessage =
+        /online payment is not available yet|stripe.*(?:not configured|key)/i.test(message)
+          ? ONLINE_PAYMENT_UNAVAILABLE_MESSAGE
+          : message;
+      Alert.alert("Booking Unavailable", friendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -127,14 +145,18 @@ export default function BookingScreen() {
         <View style={[styles.successIcon, { backgroundColor: colors.success + "20" }]}>
           <Ionicons name="calendar-outline" size={52} color={colors.success} />
         </View>
-        <Text style={[styles.successTitle, { color: colors.foreground }]}>Payment Processing</Text>
+        <Text style={[styles.successTitle, { color: colors.foreground }]}>
+          {submittedWithPromo ? "Booking Requested" : "Payment Processing"}
+        </Text>
         <Text style={[styles.successSub, { color: colors.mutedForeground }]}>
           {sessionType} on {days[selectedDay].label} at {selectedTime}
         </Text>
         <Text style={[styles.successNote, { color: colors.mutedForeground }]}>
-          Stripe will confirm your payment securely. Your paid booking appears here after the webhook updates your account.
+          {submittedWithPromo
+            ? "Your promo code was accepted and this booking is marked as free promo. Your trainer can now accept it."
+            : "Stripe will confirm your payment securely. Your paid booking appears here after the webhook updates your account."}
         </Text>
-        <AppButton title="Book Another Session" onPress={() => { setSubmitted(false); setSelectedTime(""); setNote(""); loadBookings(); }} style={{ marginTop: 24, width: 240 }} />
+        <AppButton title="Book Another Session" onPress={() => { setSubmitted(false); setSubmittedWithPromo(false); setSelectedTime(""); setNote(""); setPromoCode(""); loadBookings(); }} style={{ marginTop: 24, width: 240 }} />
       </View>
     );
   }
@@ -249,8 +271,16 @@ export default function BookingScreen() {
         <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 20 }]}>ADD A NOTE</Text>
         <AppInput placeholder="What would you like to focus on?" value={note} onChangeText={setNote} multiline numberOfLines={4} />
 
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 20 }]}>PROMO CODE (OPTIONAL)</Text>
+        <AppInput
+          placeholder="Enter promo code"
+          value={promoCode}
+          onChangeText={setPromoCode}
+          autoCapitalize="characters"
+        />
+
         <AppButton
-          title="Pay & Book"
+          title={promoCode.trim() ? "Apply Promo & Book" : "Pay & Book"}
           onPress={handleSubmit}
           loading={loading}
           disabled={!selectedTime}
