@@ -18,6 +18,8 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { getSupabaseMissingConfigMessage } from "@/lib/envDebug";
 
+const AUTH_REDIRECT_URL = "crunchtimefitnesstraining://auth/callback";
+
 export interface AppUser {
   id: string;
   name: string;
@@ -164,7 +166,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: AUTH_REDIRECT_URL,
+        },
       });
       if (error) throw error;
       if (!data.user) return null;
@@ -188,7 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isSupabaseConfigured) {
         throw new Error(getSupabaseMissingConfigMessage());
       }
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: AUTH_REDIRECT_URL,
+      });
       if (error) throw error;
     } catch (error) {
       const message = friendlyAuthError((error as Error).message);
