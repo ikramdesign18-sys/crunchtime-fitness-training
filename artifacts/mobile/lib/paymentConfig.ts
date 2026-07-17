@@ -1,3 +1,5 @@
+import { BASIC_SUBSCRIPTION_PLAN } from "@/lib/pricingPlans";
+
 export type PricingKey =
   | "membership_monthly"
   | "booking_one_hour"
@@ -18,11 +20,14 @@ export interface PricingConfigItem {
 export const DEFAULT_PRICING_CONFIG: Record<PricingKey, PricingConfigItem> = {
   membership_monthly: {
     key: "membership_monthly",
-    title: "Membership Access",
-    description: "First 100 users free, then 7-day free trial and monthly membership.",
-    amount_cents: 800,
-    currency: "usd",
-    metadata: { interval: "month", trial_days: 7, first_100_free: true },
+    title: BASIC_SUBSCRIPTION_PLAN.name,
+    description: BASIC_SUBSCRIPTION_PLAN.description,
+    amount_cents: BASIC_SUBSCRIPTION_PLAN.priceCents,
+    currency: BASIC_SUBSCRIPTION_PLAN.currency,
+    metadata: {
+      interval: BASIC_SUBSCRIPTION_PLAN.interval,
+      first_100_promo_code: "FREE100",
+    },
   },
   booking_one_hour: {
     key: "booking_one_hour",

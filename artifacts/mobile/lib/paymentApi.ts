@@ -73,7 +73,9 @@ async function readJson<T>(response: Response) {
 function getUserFacingPaymentError(message?: string) {
   if (
     message &&
-    /online payment is not available yet|stripe.*(?:not configured|secret|price|key)/i.test(message)
+    /online payment is not available yet|(?:stripe|membership payments?).*(?:not configured|secret|price|key)/i.test(
+      message,
+    )
   ) {
     return ONLINE_PAYMENT_UNAVAILABLE_MESSAGE;
   }
